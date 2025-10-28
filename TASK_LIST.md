@@ -67,23 +67,23 @@
 
 ## **PHASE 2: MEDIA IMPORT & PREVIEW (MVP Core)** ⬜
 
-### **Epic 2.1: File Import System** ⬜
+### **Epic 2.1: File Import System** ✅
 
 **Story:** Allow users to import video files into the application via file picker or drag-and-drop
 
-- ⬜ **Task 2.1.1:** Create IPC handler `import-file` in main process using `dialog.showOpenDialog()`
-- ⬜ **Task 2.1.2:** Configure file filters for `.mp4`, `.mov`, `.webm` formats
-- ⬜ **Task 2.1.3:** Return selected file path(s) to renderer via IPC response
-- ⬜ **Task 2.1.4:** Create `MediaLibrary` React component in `src/renderer/components/`
-- ⬜ **Task 2.1.5:** Add "Import Video" button that triggers IPC call to `import-file`
-- ⬜ **Task 2.1.6:** Display imported file paths in a simple list view
-- ⬜ **Task 2.1.7:** Implement drag-and-drop zone in MediaLibrary component
-- ⬜ **Task 2.1.8:** Handle `drop` event to extract file paths from DataTransfer
-- ⬜ **Task 2.1.9:** Validate dropped files are video formats (check extension)
-- ⬜ **Task 2.1.10:** Send dropped file paths to main process for processing
-- ⬜ **Task 2.1.11:** Add visual feedback for drag-over state (border highlight)
+- ✅ **Task 2.1.1:** Create IPC handler `import-file` in main process using `dialog.showOpenDialog()`
+- ✅ **Task 2.1.2:** Configure file filters for `.mp4`, `.mov`, `.webm` formats
+- ✅ **Task 2.1.3:** Return selected file path(s) to renderer via IPC response
+- ✅ **Task 2.1.4:** Create `MediaLibrary` React component in `src/renderer/components/`
+- ✅ **Task 2.1.5:** Add "Import Video" button that triggers IPC call to `import-file`
+- ✅ **Task 2.1.6:** Display imported file paths in a simple list view
+- ✅ **Task 2.1.7:** Implement drag-and-drop zone in MediaLibrary component
+- ✅ **Task 2.1.8:** Handle `drop` event to extract file paths from DataTransfer
+- ✅ **Task 2.1.9:** Validate dropped files are video formats (check extension)
+- ✅ **Task 2.1.10:** Send dropped file paths to main process for processing
+- ✅ **Task 2.1.11:** Add visual feedback for drag-over state (border highlight)
 
-**Acceptance:** Can click "Import" to select video files, can drag-and-drop MP4/MOV/WebM files, file paths appear in media library list. ⬜
+**Acceptance:** Can click "Import" to select video files, can drag-and-drop MP4/MOV/WebM files, file paths appear in media library list. ✅
 
 ---
 
