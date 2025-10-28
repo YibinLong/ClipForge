@@ -3,6 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <title>ClipForge</title>
+    <!-- LAX CSP for local Electron app to allow file:// thumbnails and dev tools -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: blob: file:; media-src 'self' data: blob: file:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; connect-src 'self' ws: http: https:;" />
   </head>
   <body>
     <!-- Root element for React to mount the application -->
