@@ -23,7 +23,11 @@ import {
   TestMessageResponse,
   IPCErrorResponse,
   isIPCError,
+  SaveMediaLibraryRequest,
+  SaveMediaLibraryResponse,
+  LoadMediaLibraryResponse,
 } from '../../types/ipc';
+import { MediaClip } from '../../types/media';
 
 /**
  * Call the test-message IPC handler
@@ -75,4 +79,25 @@ export async function invokeIPC<T = unknown>(
 
 // Export the type guard for convenience
 export { isIPCError };
+
+// ============================================================================
+// Media Library Persistence helpers
+// ============================================================================
+
+export async function saveMediaLibrary(clips: MediaClip[]): Promise<SaveMediaLibraryResponse | IPCErrorResponse> {
+  const req: SaveMediaLibraryRequest = { clips };
+  return window.electron.invoke(
+    IPC_CHANNELS.SAVE_MEDIA_LIBRARY,
+    req
+  ) as Promise<SaveMediaLibraryResponse | IPCErrorResponse>;
+}
+
+export async function loadMediaLibrary(): Promise<MediaClip[] | IPCErrorResponse> {
+  const res = (await window.electron.invoke(
+    IPC_CHANNELS.LOAD_MEDIA_LIBRARY
+  )) as LoadMediaLibraryResponse | IPCErrorResponse;
+
+  if (isIPCError(res)) return res;
+  return res.clips;
+}
 
