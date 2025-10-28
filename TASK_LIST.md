@@ -87,24 +87,24 @@
 
 ---
 
-### **Epic 2.2: FFmpeg Integration** ⬜
+### **Epic 2.2: FFmpeg Integration** ✅
 
 **Story:** Extract video metadata and generate thumbnails using FFmpeg
 
-- ⬜ **Task 2.2.1:** Create `src/main/services/ffmpeg.ts` service module
-- ⬜ **Task 2.2.2:** Set FFmpeg path from `require('ffmpeg-static')` in ffmpeg.setFfmpegPath()
-- ⬜ **Task 2.2.3:** Implement `getVideoMetadata(filePath)` function using ffprobe
-- ⬜ **Task 2.2.4:** Extract duration, width, height, and file size from metadata
-- ⬜ **Task 2.2.5:** Implement `generateThumbnail(filePath, outputPath)` using FFmpeg
-- ⬜ **Task 2.2.6:** Configure thumbnail extraction at 1-second mark with single frame
-- ⬜ **Task 2.2.7:** Save thumbnails to `userData/thumbnails/` directory
-- ⬜ **Task 2.2.8:** Create `MediaClip` TypeScript interface in `src/types/media.ts`
-- ⬜ **Task 2.2.9:** Update `import-file` handler to call metadata extraction and thumbnail generation
-- ⬜ **Task 2.2.10:** Return complete MediaClip object (id, filename, path, duration, width, height, size, thumbnail)
-- ⬜ **Task 2.2.11:** Test with various video formats and resolutions
-- ⬜ **Task 2.2.12:** Add error handling for corrupted/unsupported files
+- ✅ **Task 2.2.1:** Create `src/main/services/ffmpeg.ts` service module
+- ✅ **Task 2.2.2:** Set FFmpeg path from `require('ffmpeg-static')` in ffmpeg.setFfmpegPath()
+- ✅ **Task 2.2.3:** Implement `getVideoMetadata(filePath)` function using ffprobe
+- ✅ **Task 2.2.4:** Extract duration, width, height, and file size from metadata
+- ✅ **Task 2.2.5:** Implement `generateThumbnail(filePath, outputPath)` using FFmpeg
+- ✅ **Task 2.2.6:** Configure thumbnail extraction at 1-second mark with single frame
+- ✅ **Task 2.2.7:** Save thumbnails to `userData/thumbnails/` directory
+- ✅ **Task 2.2.8:** Create `MediaClip` TypeScript interface in `src/types/media.ts`
+- ✅ **Task 2.2.9:** Update `import-file` handler to call metadata extraction and thumbnail generation
+- ✅ **Task 2.2.10:** Return complete MediaClip object (id, filename, path, duration, width, height, size, thumbnail)
+- ✅ **Task 2.2.11:** Test with various video formats and resolutions
+- ✅ **Task 2.2.12:** Add error handling for corrupted/unsupported files
 
-**Acceptance:** Importing video extracts correct metadata (duration, resolution, file size), generates thumbnail image, returns complete MediaClip object. ⬜
+**Acceptance:** Importing video extracts correct metadata (duration, resolution, file size), generates thumbnail image, returns complete MediaClip object. ✅
 
 ---
 
