@@ -3,6 +3,8 @@ import { Stage, Layer, Line, Rect, Text, Group } from 'react-konva';
 import { useTimelineStore } from '../stores/timelineStore';
 import { useMediaStore } from '../stores/mediaStore';
 import { TimelineClip } from '../../types/timeline';
+import { startExportTimeline } from '../utils/ipc';
+import { isIPCError } from '../../types/ipc';
 
 interface TimelineProps {
   /**
@@ -315,6 +317,35 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
           >
             +
           </button>
+          {(() => {
+            const canExport = timelineClips.length > 0;
+            return (
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await startExportTimeline({
+                      timeline: timelineClips,
+                      media: mediaClips,
+                      trackId: 1,
+                      suggestedName: undefined,
+                    });
+                    if (isIPCError(res)) {
+                      alert(`Export failed: ${res.error}`);
+                    } else {
+                      alert(`Exported to: ${res.outputPath}`);
+                    }
+                  } catch (e) {
+                    alert(`Export error: ${e instanceof Error ? e.message : String(e)}`);
+                  }
+                }}
+                disabled={!canExport}
+                className={`px-3 py-1 rounded ${canExport ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-60'}`}
+                title={canExport ? 'Export timeline to MP4 (Track 1 only for MVP)' : 'Add a clip to export'}
+              >
+                Export ⤓
+              </button>
+            );
+          })()}
         </div>
       </div>
 
