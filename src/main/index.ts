@@ -28,6 +28,9 @@ const createWindow = (): void => {
       // NOTE: sandbox is disabled due to webpack asset-relocator-loader __dirname issue
       // contextIsolation + nodeIntegration:false still provides strong security
       sandbox: false,
+      // LAX for local app: allow file:// resources in dev and while loading thumbnails
+      webSecurity: false,
+      allowRunningInsecureContent: true,
     },
   });
 
