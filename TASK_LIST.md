@@ -293,22 +293,22 @@
 
 ---
 
-### **Epic 4.3: Delete Clips** ⬜
+### **Epic 4.3: Delete Clips** ✅
 
 **Story:** Allow users to delete selected clips from timeline using keyboard
 
-- ⬜ **Task 4.3.1:** Add keyboard event listener to Timeline component
-- ⬜ **Task 4.3.2:** Listen for Delete and Backspace key presses
-- ⬜ **Task 4.3.3:** Check if a clip is currently selected (selectedClipId !== null)
-- ⬜ **Task 4.3.4:** Call `removeClipFromTimeline(selectedClipId)` on delete key
-- ⬜ **Task 4.3.5:** Clear selectedClipId after deletion
-- ⬜ **Task 4.3.6:** Remove clip rectangle from Konva canvas
-- ⬜ **Task 4.3.7:** Add "Delete" button to timeline toolbar as alternative to keyboard
-- ⬜ **Task 4.3.8:** Disable delete button when no clip selected
-- ⬜ **Task 4.3.9:** Show confirmation prompt for deletion (optional, can skip for MVP)
-- ⬜ **Task 4.3.10:** Test deletion updates timeline state and UI correctly
+- ✅ **Task 4.3.1:** Add keyboard event listener to Timeline component
+- ✅ **Task 4.3.2:** Listen for Delete and Backspace key presses
+- ✅ **Task 4.3.3:** Check if a clip is currently selected (selectedClipId !== null)
+- ✅ **Task 4.3.4:** Call `removeClipFromTimeline(selectedClipId)` on delete key
+- ✅ **Task 4.3.5:** Clear selectedClipId after deletion
+- ✅ **Task 4.3.6:** Remove clip rectangle from Konva canvas
+- ✅ **Task 4.3.7:** Add "Delete" button to timeline toolbar as alternative to keyboard
+- ✅ **Task 4.3.8:** Disable delete button when no clip selected
+- ✅ **Task 4.3.9:** Show confirmation prompt for deletion (optional, can skip for MVP)
+- ✅ **Task 4.3.10:** Test deletion updates timeline state and UI correctly
 
-**Acceptance:** Selecting clip and pressing Delete/Backspace removes it from timeline, timeline state updates, canvas re-renders without clip. ⬜
+**Acceptance:** Selecting clip and pressing Delete/Backspace removes it from timeline, timeline state updates, canvas re-renders without clip. ✅
 
 ---
 
