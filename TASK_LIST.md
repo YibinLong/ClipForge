@@ -132,20 +132,20 @@
 
 **Story:** Manage media library state with Zustand and persist across app sessions
 
-- ⬜ **Task 2.4.1:** Create Zustand store in `src/renderer/stores/mediaStore.ts`
-- ⬜ **Task 2.4.2:** Define state shape: `{ clips: MediaClip[], selectedClipId: string | null }`
-- ⬜ **Task 2.4.3:** Implement `addClip(clip)` action
-- ⬜ **Task 2.4.4:** Implement `removeClip(clipId)` action
-- ⬜ **Task 2.4.5:** Implement `selectClip(clipId)` action
-- ⬜ **Task 2.4.6:** Connect MediaLibrary component to Zustand store
-- ⬜ **Task 2.4.7:** Update UI to show clips from store instead of local state
-- ⬜ **Task 2.4.8:** Create IPC handler `save-media-library` in main process
-- ⬜ **Task 2.4.9:** Use electron-store to persist media library JSON
-- ⬜ **Task 2.4.10:** Create IPC handler `load-media-library` to retrieve saved data
-- ⬜ **Task 2.4.11:** Load media library from electron-store on app startup
-- ⬜ **Task 2.4.12:** Validate file paths on load (check if files still exist)
-- ⬜ **Task 2.4.13:** Mark missing files with error state or remove them
-- ⬜ **Task 2.4.14:** Auto-save media library on every change (debounced)
+- ✅ **Task 2.4.1:** Create Zustand store in `src/renderer/stores/mediaStore.ts`
+- ✅ **Task 2.4.2:** Define state shape: `{ clips: MediaClip[], selectedClipId: string | null }`
+- ✅ **Task 2.4.3:** Implement `addClip(clip)` action
+- ✅ **Task 2.4.4:** Implement `removeClip(clipId)` action
+- ✅ **Task 2.4.5:** Implement `selectClip(clipId)` action
+- ✅ **Task 2.4.6:** Connect MediaLibrary component to Zustand store
+- ✅ **Task 2.4.7:** Update UI to show clips from store instead of local state
+- ✅ **Task 2.4.8:** Create IPC handler `save-media-library` in main process
+- ✅ **Task 2.4.9:** Use electron-store to persist media library JSON
+- ✅ **Task 2.4.10:** Create IPC handler `load-media-library` to retrieve saved data
+- ✅ **Task 2.4.11:** Load media library from electron-store on app startup
+- ✅ **Task 2.4.12:** Validate file paths on load (check if files still exist)
+- ✅ **Task 2.4.13:** Mark missing files with error state or remove them
+- ✅ **Task 2.4.14:** Auto-save media library on every change (debounced)
 
 **Acceptance:** Media library state managed by Zustand, persists to disk via electron-store, reloads on app restart, shows same clips after relaunch. ⬜
 
