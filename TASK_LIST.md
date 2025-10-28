@@ -357,69 +357,69 @@
 
 ---
 
-### **Epic 5.2: Multi-Clip Concatenation** ⬜
+### **Epic 5.2: Multi-Clip Concatenation** ✅
 
 **Story:** Export timeline with multiple clips using FFmpeg filter_complex
 
-- ⬜ **Task 5.2.1:** Pass entire timeline clips array to export IPC handler
-- ⬜ **Task 5.2.2:** Sort timeline clips by startTime
-- ⬜ **Task 5.2.3:** Build FFmpeg input list (add each unique video file as input)
-- ⬜ **Task 5.2.4:** Implement trim filter for each clip based on trimStart/trimEnd
-- ⬜ **Task 5.2.5:** Use `setpts` filter to reset timestamps after trim
-- ⬜ **Task 5.2.6:** Build concat filter to stitch trimmed clips in sequence
-- ⬜ **Task 5.2.7:** Handle gaps between clips (insert black frames or skip)
-- ⬜ **Task 5.2.8:** Construct complete filter_complex string
-- ⬜ **Task 5.2.9:** Execute FFmpeg command with filter_complex
-- ⬜ **Task 5.2.10:** Test export with 2 clips from different source files
-- ⬜ **Task 5.2.11:** Test export with 3+ clips in sequence
-- ⬜ **Task 5.2.12:** Verify exported video has correct duration and clip order
+- ✅ **Task 5.2.1:** Pass entire timeline clips array to export IPC handler
+- ✅ **Task 5.2.2:** Sort timeline clips by startTime
+- ✅ **Task 5.2.3:** Build FFmpeg input list (add each unique video file as input)
+- ✅ **Task 5.2.4:** Implement trim filter for each clip based on trimStart/trimEnd
+- ✅ **Task 5.2.5:** Use `setpts` filter to reset timestamps after trim
+- ✅ **Task 5.2.6:** Build concat filter to stitch trimmed clips in sequence
+- ✅ **Task 5.2.7:** Handle gaps between clips (insert black frames or skip)
+- ✅ **Task 5.2.8:** Construct complete filter_complex string
+- ✅ **Task 5.2.9:** Execute FFmpeg command with filter_complex
+- ✅ **Task 5.2.10:** Test export with 2 clips from different source files
+- ✅ **Task 5.2.11:** Test export with 3+ clips in sequence
+- ✅ **Task 5.2.12:** Verify exported video has correct duration and clip order
 
-**Acceptance:** Can export timeline with multiple clips, clips concatenate in correct order, trims are applied, final video plays seamlessly. ⬜
+**Acceptance:** Can export timeline with multiple clips, clips concatenate in correct order, trims are applied, final video plays seamlessly. ✅
 
 ---
 
-### **Epic 5.3: Export Progress & UI** ⬜
+### **Epic 5.3: Export Progress & UI** ✅
 
 **Story:** Show real-time export progress with ability to cancel
 
-- ⬜ **Task 5.3.1:** Create `ExportModal` component in `src/renderer/components/`
-- ⬜ **Task 5.3.2:** Show modal when export starts
-- ⬜ **Task 5.3.3:** Add progress bar (0-100%) to modal
-- ⬜ **Task 5.3.4:** Add status text ("Encoding...", "Complete", etc.)
-- ⬜ **Task 5.3.5:** Add cancel button to modal
-- ⬜ **Task 5.3.6:** Listen to FFmpeg progress events in main process
-- ⬜ **Task 5.3.7:** Calculate percentage from FFmpeg time progress / total duration
-- ⬜ **Task 5.3.8:** Send progress updates via IPC (`export-progress` channel)
-- ⬜ **Task 5.3.9:** Update modal progress bar on each progress event
-- ⬜ **Task 5.3.10:** Estimate time remaining based on progress rate
-- ⬜ **Task 5.3.11:** Display time remaining in modal (e.g., "2 minutes left")
-- ⬜ **Task 5.3.12:** Implement cancel IPC handler that kills FFmpeg process
-- ⬜ **Task 5.3.13:** Delete partial output file on cancel
-- ⬜ **Task 5.3.14:** Close modal on completion or cancel
-- ⬜ **Task 5.3.15:** Test progress updates smoothly during export
+- ✅ **Task 5.3.1:** Create `ExportModal` component in `src/renderer/components/`
+- ✅ **Task 5.3.2:** Show modal when export starts
+- ✅ **Task 5.3.3:** Add progress bar (0-100%) to modal
+- ✅ **Task 5.3.4:** Add status text ("Encoding...", "Complete", etc.)
+- ✅ **Task 5.3.5:** Add cancel button to modal
+- ✅ **Task 5.3.6:** Listen to FFmpeg progress events in main process
+- ✅ **Task 5.3.7:** Calculate percentage from FFmpeg time progress / total duration
+- ✅ **Task 5.3.8:** Send progress updates via IPC (`export-progress` channel)
+- ✅ **Task 5.3.9:** Update modal progress bar on each progress event
+- ✅ **Task 5.3.10:** Estimate time remaining based on progress rate
+- ✅ **Task 5.3.11:** Display time remaining in modal (e.g., "2 minutes left")
+- ✅ **Task 5.3.12:** Implement cancel IPC handler that kills FFmpeg process
+- ✅ **Task 5.3.13:** Delete partial output file on cancel
+- ✅ **Task 5.3.14:** Close modal on completion or cancel
+- ✅ **Task 5.3.15:** Test progress updates smoothly during export
 
-**Acceptance:** Export modal shows during encoding, progress bar updates in real-time, displays time remaining, cancel button stops export and cleans up. ⬜
+**Acceptance:** Export modal shows during encoding, progress bar updates in real-time, displays time remaining, cancel button stops export and cleans up. ✅
 
 ---
 
-### **Epic 5.4: Resolution Options** ⬜
+### **Epic 5.4: Resolution Options** ✅
 
 **Story:** Allow users to choose export resolution (720p, 1080p, or source)
 
-- ⬜ **Task 5.4.1:** Add resolution dropdown to export UI (before starting export)
-- ⬜ **Task 5.4.2:** Options: "720p (1280x720)", "1080p (1920x1080)", "Source Resolution"
-- ⬜ **Task 5.4.3:** Pass selected resolution to export IPC handler
-- ⬜ **Task 5.4.4:** Determine output dimensions based on selection
-- ⬜ **Task 5.4.5:** Add FFmpeg scale filter when resolution differs from source
-- ⬜ **Task 5.4.6:** Use `scale=1280:720` or `scale=1920:1080` filter
-- ⬜ **Task 5.4.7:** Maintain aspect ratio during scaling (use `scale=-2:720` if needed)
-- ⬜ **Task 5.4.8:** Handle source resolution option (no scaling)
-- ⬜ **Task 5.4.9:** Handle mixed-resolution clips (scale all to target resolution)
-- ⬜ **Task 5.4.10:** Test export at 720p produces correct dimensions
-- ⬜ **Task 5.4.11:** Test export at 1080p produces correct dimensions
-- ⬜ **Task 5.4.12:** Test source resolution preserves original quality
+- ✅ **Task 5.4.1:** Add resolution dropdown to export UI (before starting export)
+- ✅ **Task 5.4.2:** Options: "720p (1280x720)", "1080p (1920x1080)", "Source Resolution"
+- ✅ **Task 5.4.3:** Pass selected resolution to export IPC handler
+- ✅ **Task 5.4.4:** Determine output dimensions based on selection
+- ✅ **Task 5.4.5:** Add FFmpeg scale filter when resolution differs from source
+- ✅ **Task 5.4.6:** Use `scale=1280:720` or `scale=1920:1080` filter
+- ✅ **Task 5.4.7:** Maintain aspect ratio during scaling (use `scale=-2:720` if needed)
+- ✅ **Task 5.4.8:** Handle source resolution option (no scaling)
+- ✅ **Task 5.4.9:** Handle mixed-resolution clips (scale all to target resolution)
+- ✅ **Task 5.4.10:** Test export at 720p produces correct dimensions
+- ✅ **Task 5.4.11:** Test export at 1080p produces correct dimensions
+- ✅ **Task 5.4.12:** Test source resolution preserves original quality
 
-**Acceptance:** Can select export resolution, exported videos have correct dimensions, scaling maintains aspect ratio, mixed-resolution timelines export correctly. ⬜
+**Acceptance:** Can select export resolution, exported videos have correct dimensions, scaling maintains aspect ratio, mixed-resolution timelines export correctly. ✅
 
 ---
 
