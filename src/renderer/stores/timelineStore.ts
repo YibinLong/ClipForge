@@ -53,6 +53,7 @@ interface TimelineState {
   addClipToTimeline: (clip: TimelineClip) => void;
   removeClipFromTimeline: (clipId: string) => void;
   updateClip: (clipId: string, updates: Partial<TimelineClip>) => void;
+  moveClipToTrack: (clipId: string, trackId: number) => void;
   setPlayheadPosition: (time: number) => void;
   setZoomLevel: (level: number) => void;
   selectTimelineClip: (clipId: string | null) => void;
@@ -74,7 +75,12 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
   currentTime: 0,
 
   addClipToTimeline: (clip) => {
-    set((state) => ({ clips: [...state.clips, clip] }));
+    // Back-compat/defaults: ensure trackId exists and is valid (1 or 2)
+    const safeClip: TimelineClip = {
+      ...clip,
+      trackId: clip.trackId === 2 ? 2 : 1,
+    };
+    set((state) => ({ clips: [...state.clips, safeClip] }));
   },
 
   removeClipFromTimeline: (clipId) => {
@@ -84,6 +90,13 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
   updateClip: (clipId, updates) => {
     set((state) => ({
       clips: state.clips.map((c) => (c.id === clipId ? { ...c, ...updates } : c)),
+    }));
+  },
+
+  moveClipToTrack: (clipId, trackId) => {
+    const safeTrack = trackId === 2 ? 2 : 1;
+    set((state) => ({
+      clips: state.clips.map((c) => (c.id === clipId ? { ...c, trackId: safeTrack } : c)),
     }));
   },
 

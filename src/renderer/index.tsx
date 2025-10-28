@@ -45,21 +45,21 @@ const App: React.FC = () => {
   const timelineClips = useTimelineStore((s) => s.clips);
   const mediaClips = useMediaStore((s) => s.clips);
 
-  // Active clip computation
-  const active = useMemo(() => {
-    if (!timelineClips.length) return { clip: null as any, media: null as any, mediaTime: 0 };
-    // Prefer track 1, else lowest trackId that contains currentTime
-    const containing = timelineClips
-      .filter((c) => currentTime >= c.startTime && currentTime < c.endTime)
-      .sort((a, b) => a.trackId - b.trackId || a.startTime - b.startTime);
-    const clip = containing[0] ?? null;
-    const media = clip ? mediaClips.find((m) => m.id === clip.mediaId) ?? null : null;
-    let mediaTime = 0;
-    if (clip) {
-      const withinClip = Math.max(0, currentTime - clip.startTime);
-      mediaTime = Math.max(clip.trimStart, Math.min(clip.trimEnd, clip.trimStart + withinClip));
-    }
-    return { clip, media, mediaTime };
+  // Active clip computation per track
+  const { active1, active2 } = useMemo(() => {
+    const findActiveForTrack = (trackId: number) => {
+      const clip = timelineClips
+        .filter((c) => c.trackId === trackId && currentTime >= c.startTime && currentTime < c.endTime)
+        .sort((a, b) => a.startTime - b.startTime)[0] ?? null;
+      const media = clip ? mediaClips.find((m) => m.id === clip.mediaId) ?? null : null;
+      let mediaTime = 0;
+      if (clip) {
+        const withinClip = Math.max(0, currentTime - clip.startTime);
+        mediaTime = Math.max(clip.trimStart, Math.min(clip.trimEnd, clip.trimStart + withinClip));
+      }
+      return { clip, media, mediaTime } as const;
+    };
+    return { active1: findActiveForTrack(1), active2: findActiveForTrack(2) };
   }, [timelineClips, mediaClips, currentTime]);
 
   // Playback controller (rAF) — only advances during gaps; inside a clip, let <video> clock drive
@@ -184,16 +184,16 @@ const App: React.FC = () => {
         {/* Main workspace: Video Player (left) and Media Library (right) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           <VideoPlayer
-            src={active.media ? `file://${active.media.path}` : null}
+            baseSrc={active1.media ? `file://${active1.media.path}` : null}
+            overlaySrc={active2.media ? `file://${active2.media.path}` : null}
             externalIsPlaying={isPlaying}
-            externalTime={active.clip ? active.mediaTime : null}
-            onMediaTimeUpdate={(t) => {
-              // Map media time back to absolute timeline time when inside a clip
-              if (active.clip) {
-                // First clamp t to valid trim range, then calculate offset from trimStart
-                const clampedMediaTime = Math.max(active.clip.trimStart, Math.min(active.clip.trimEnd, t));
-                const offsetIntoClip = clampedMediaTime - active.clip.trimStart;
-                const abs = active.clip.startTime + offsetIntoClip;
+            baseExternalTime={active1.clip ? active1.mediaTime : null}
+            overlayExternalTime={active2.clip ? active2.mediaTime : null}
+            onBaseMediaTimeUpdate={(t) => {
+              if (active1.clip) {
+                const clamped = Math.max(active1.clip.trimStart, Math.min(active1.clip.trimEnd, t));
+                const offset = clamped - active1.clip.trimStart;
+                const abs = active1.clip.startTime + offset;
                 setCurrentTime(abs);
               }
             }}
