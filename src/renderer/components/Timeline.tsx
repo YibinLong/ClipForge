@@ -1,6 +1,8 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useCallback } from 'react';
 import { Stage, Layer, Line, Rect, Text, Group } from 'react-konva';
 import { useTimelineStore } from '../stores/timelineStore';
+import { useMediaStore } from '../stores/mediaStore';
+import { TimelineClip } from '../../types/timeline';
 
 interface TimelineProps {
   /**
@@ -31,6 +33,12 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
   const playheadPosition = useTimelineStore((s) => s.playheadPosition);
   const setZoom = useTimelineStore((s) => s.setZoomLevel);
   const setPlayhead = useTimelineStore((s) => s.setPlayheadPosition);
+  const addClipToTimeline = useTimelineStore((s) => s.addClipToTimeline);
+  const selectedTimelineClipId = useTimelineStore((s) => s.selectedClipId);
+  const selectTimelineClip = useTimelineStore((s) => s.selectTimelineClip);
+  const updateClip = useTimelineStore((s) => s.updateClip);
+  const timelineClips = useTimelineStore((s) => s.clips);
+  const mediaClips = useMediaStore((s) => s.clips);
 
   const pixelsPerSecond = BASE_PX_PER_SEC * zoomLevel;
   const totalSeconds = Math.max(0, Math.ceil(durationSec));
@@ -41,6 +49,7 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
 
   // Scroll container ref to preserve playhead screen position during zoom
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = scrollRef; // alias for clarity below
 
   function formatTime(seconds: number): string {
     const mins = Math.floor(seconds / 60);
@@ -119,6 +128,70 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
     adjustZoom(zoomLevel + 1);
   };
 
+  // Helpers to map screen coords to timeline time/track
+  const getDropContext = useCallback((clientX: number, clientY: number) => {
+    const container = containerRef.current;
+    if (!container) return null;
+    const bounds = container.getBoundingClientRect();
+    const xInContainer = clientX - bounds.left + (container.scrollLeft ?? 0);
+    const yInContainer = clientY - bounds.top;
+
+    // Convert X to time
+    const rawTime = xInContainer / pixelsPerSecond;
+    const time = Math.max(0, Math.min(roundedTo10, Math.round(rawTime * 10) / 10));
+
+    // Determine track by Y (simple 2 tracks below ruler)
+    const trackAreaTop = RULER_HEIGHT + 10;
+    const trackHeight = 100; // per track visual lane
+    let trackId = 1;
+    if (yInContainer >= trackAreaTop + trackHeight) {
+      trackId = 2;
+    } else {
+      trackId = 1;
+    }
+
+    return { time, trackId };
+  }, [containerRef, pixelsPerSecond, roundedTo10]);
+
+  // HTML5 DnD handlers on outer scroll container
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const data = e.dataTransfer.getData('application/clipforge-media');
+    if (!data) return;
+    let payload: { mediaId: string; duration: number; filename: string } | null = null;
+    try {
+      payload = JSON.parse(data);
+    } catch {
+      return;
+    }
+    if (!payload) return;
+
+    const ctx = getDropContext(e.clientX, e.clientY);
+    if (!ctx) return;
+
+    const duration = Math.max(0, payload.duration ?? 0);
+    const startTime = ctx.time;
+    const endTime = Math.min(roundedTo10, startTime + duration);
+
+    const newClip: TimelineClip = {
+      id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      mediaId: payload.mediaId,
+      trackId: ctx.trackId,
+      startTime,
+      endTime,
+      trimStart: 0,
+      trimEnd: duration,
+    };
+    addClipToTimeline(newClip);
+  };
+
   return (
     <div className="bg-white rounded-2xl shadow-2xl p-8">
       {/* Header & Controls */}
@@ -147,8 +220,13 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
         </div>
       </div>
 
-      {/* Scrollable canvas container */}
-      <div ref={scrollRef} className="overflow-x-auto w-full border border-gray-200 rounded-lg bg-gray-50">
+      {/* Scrollable canvas container & drop zone */}
+      <div
+        ref={scrollRef}
+        className="overflow-x-auto w-full border border-gray-200 rounded-lg bg-gray-50"
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
         <div style={{ width: stageWidth }}>
           <Stage width={stageWidth} height={TIMELINE_HEIGHT}>
             <Layer>
@@ -164,6 +242,62 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                 {/* Separator under ruler */}
                 <Line points={[0, RULER_HEIGHT, stageWidth, RULER_HEIGHT]} stroke="#e5e7eb" strokeWidth={1} />
               </Group>
+
+              {/* Timeline Clips */}
+              {timelineClips.map((clip) => {
+                const x = clip.startTime * pixelsPerSecond;
+                const width = Math.max(1, (clip.endTime - clip.startTime) * pixelsPerSecond);
+                const trackAreaTop = RULER_HEIGHT + 10;
+                const trackHeight = 100;
+                const y = clip.trackId === 2 ? trackAreaTop + trackHeight : trackAreaTop;
+                const media = mediaClips.find((m) => m.id === clip.mediaId);
+                const label = media?.filename ?? clip.mediaId;
+                const isSelected = selectedTimelineClipId === clip.id;
+                const fill = clip.trackId === 1 ? '#bfdbfe' : '#fde68a'; // blue-200 / amber-200
+                const stroke = isSelected ? '#2563eb' : '#9ca3af'; // blue-600 or gray-400
+
+                return (
+                  <Group
+                    key={clip.id}
+                    x={x}
+                    y={y}
+                    draggable
+                    dragBoundFunc={(pos) => {
+                      const clampedX = Math.max(0, Math.min(stageWidth - width, pos.x));
+                      return { x: clampedX, y };
+                    }}
+                    onClick={() => selectTimelineClip(clip.id)}
+                    onDragEnd={(e) => {
+                      const newX = e.target.x();
+                      const newStart = Math.round((newX / pixelsPerSecond) * 10) / 10;
+                      const durationSec = clip.endTime - clip.startTime;
+                      const newEnd = Math.min(roundedTo10, newStart + durationSec);
+                      updateClip(clip.id, { startTime: newStart, endTime: newEnd });
+                    }}
+                  >
+                    <Rect
+                      x={0}
+                      y={0}
+                      width={width}
+                      height={trackHeight - 10}
+                      fill={fill}
+                      stroke={stroke}
+                      strokeWidth={isSelected ? 3 : 1}
+                      cornerRadius={6}
+                      shadowColor={'#000'}
+                      shadowBlur={isSelected ? 8 : 2}
+                      shadowOpacity={0.1}
+                    />
+                    <Text
+                      x={8}
+                      y={8}
+                      text={label}
+                      fontSize={12}
+                      fill="#374151"
+                    />
+                  </Group>
+                );
+              })}
 
               {/* Playhead - draggable group with larger handle for easier interaction */}
               <Group
