@@ -5,6 +5,7 @@ import { loadMediaLibrary, saveMediaLibrary } from '../utils/ipc';
 type MediaState = {
   clips: MediaClip[];
   selectedClipId: string | null;
+  isInitializing: boolean;
   addClip: (clip: MediaClip) => void;
   addClips: (clips: MediaClip[]) => void;
   removeClip: (clipId: string) => void;
@@ -29,6 +30,7 @@ function scheduleSave(getClips: () => MediaClip[]): void {
 export const useMediaStore = create<MediaState>((set, get) => ({
   clips: [],
   selectedClipId: null,
+  isInitializing: false,
 
   addClip: (clip) => {
     set((state) => ({ clips: [...state.clips, clip] }));
@@ -54,9 +56,31 @@ export const useMediaStore = create<MediaState>((set, get) => ({
   selectClip: (clipId) => set({ selectedClipId: clipId }),
 
   initializeFromSaved: async () => {
-    const result = await loadMediaLibrary();
-    if (Array.isArray(result)) {
-      set({ clips: result });
+    // Set initializing flag to true at start
+    set({ isInitializing: true });
+    
+    try {
+      const result = await loadMediaLibrary();
+      if (Array.isArray(result)) {
+        // RACE CONDITION FIX:
+        // Only set clips if no clips were added during initialization
+        // This prevents overwriting clips that were imported while loading
+        set((state) => {
+          if (state.clips.length === 0) {
+            // Safe to load: no clips were added during initialization
+            return { clips: result, isInitializing: false };
+          } else {
+            // Clips were added during load - keep them and don't overwrite
+            console.warn('[MEDIA STORE] Clips were added during initialization. Keeping new clips.');
+            return { isInitializing: false };
+          }
+        });
+      } else {
+        set({ isInitializing: false });
+      }
+    } catch (error) {
+      console.error('[MEDIA STORE] Error loading media library:', error);
+      set({ isInitializing: false });
     }
   },
 }));

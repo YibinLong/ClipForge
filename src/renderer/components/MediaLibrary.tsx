@@ -81,6 +81,7 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
   const selectClip = useMediaStore(state => state.selectClip);
   const initializeFromSaved = useMediaStore(state => state.initializeFromSaved);
   const storeSelectedClipId = useMediaStore(state => state.selectedClipId);
+  const isInitializing = useMediaStore(state => state.isInitializing);
   
   // State to track drag-over state for visual feedback
   const [isDragOver, setIsDragOver] = useState(false);
@@ -264,17 +265,17 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
       <div className="mb-6">
         <button
           onClick={handleImportClick}
-          disabled={isImporting}
+          disabled={isImporting || isInitializing}
           className={`
             w-full py-4 px-6 rounded-lg font-semibold text-white text-lg
             transition-all duration-200
-            ${isImporting 
+            ${(isImporting || isInitializing)
               ? 'bg-gray-400 cursor-not-allowed' 
               : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 hover:shadow-lg'
             }
           `}
         >
-          {isImporting ? '⏳ Opening...' : '➕ Import Video'}
+          {isInitializing ? '⏳ Loading Library...' : isImporting ? '⏳ Opening...' : '➕ Import Video'}
         </button>
       </div>
 
