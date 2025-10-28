@@ -9,6 +9,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import IPCTest from './components/IPCTest';
+import MediaLibrary from './components/MediaLibrary';
 
 // Verify that the Electron API is available
 if (window.electron) {
@@ -94,6 +95,9 @@ const App: React.FC = () => {
 
         {/* IPC Test Component */}
         <IPCTest />
+
+        {/* Media Library Component */}
+        <MediaLibrary />
       </div>
     </div>
   );
