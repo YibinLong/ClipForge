@@ -26,8 +26,14 @@ export const IPC_CHANNELS = {
    */
   TEST_MESSAGE: 'test-message',
   
+  /**
+   * Import file channel for opening file picker dialog
+   * Opens native file dialog to select video files (.mp4, .mov, .webm)
+   * Returns array of selected file paths
+   */
+  IMPORT_FILE: 'import-file',
+  
   // Future channels will be added here as we implement more features:
-  // IMPORT_FILE: 'import-file',
   // GET_VIDEO_METADATA: 'get-video-metadata',
   // START_RECORDING: 'start-recording',
   // etc.
@@ -63,6 +69,22 @@ export interface TestMessageResponse {
   reply: string;
   /** Unix timestamp (milliseconds) when the message was processed */
   timestamp: number;
+  /** Whether the request was successful */
+  success: true;
+}
+
+// ============================================================================
+// IMPORT FILE HANDLER
+// ============================================================================
+
+/**
+ * Response payload for import-file channel
+ * 
+ * This is what the main process sends back after user selects files
+ */
+export interface ImportFileResponse {
+  /** Array of selected file paths (absolute paths) */
+  filePaths: string[];
   /** Whether the request was successful */
   success: true;
 }
@@ -112,7 +134,7 @@ export function isIPCError(response: unknown): response is IPCErrorResponse {
  * Union type of all successful response types
  * Add new response types here as we implement more handlers
  */
-export type IPCResponse = TestMessageResponse;
+export type IPCResponse = TestMessageResponse | ImportFileResponse;
 
 /**
  * Combined response type that includes potential errors
