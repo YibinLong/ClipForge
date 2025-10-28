@@ -44,6 +44,7 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
   const updateClip = useTimelineStore((s) => s.updateClip);
   const rippleTrimStart = useTimelineStore((s) => s.rippleTrimStart);
   const rippleTrimEnd = useTimelineStore((s) => s.rippleTrimEnd);
+  const splitClip = useTimelineStore((s) => s.splitClip);
   const timelineClips = useTimelineStore((s) => s.clips);
   const mediaClips = useMediaStore((s) => s.clips);
 
@@ -247,6 +248,27 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
           >
             {isPlaying ? 'Pause ⏸' : 'Play ▶'}
           </button>
+          {/* Split button */}
+          {(() => {
+            const MIN_CLIP_DURATION = 0.1;
+            const candidates = timelineClips
+              .filter((c) => playheadPosition >= c.startTime && playheadPosition < c.endTime)
+              .sort((a, b) => a.trackId - b.trackId || a.startTime - b.startTime);
+            const target = candidates[0] ?? null;
+            const canSplit = !!target &&
+              (playheadPosition - (target?.startTime ?? 0)) >= MIN_CLIP_DURATION &&
+              ((target?.endTime ?? 0) - playheadPosition) >= MIN_CLIP_DURATION;
+            return (
+              <button
+                onClick={() => target && splitClip(target.id, playheadPosition)}
+                disabled={!canSplit}
+                className={`px-3 py-1 rounded ${canSplit ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-60'}`}
+                title={canSplit ? 'Split clip at playhead' : 'Move playhead inside a clip to split'}
+              >
+                Split ✂
+              </button>
+            );
+          })()}
           <button
             onClick={onZoomOut}
             className="px-3 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
