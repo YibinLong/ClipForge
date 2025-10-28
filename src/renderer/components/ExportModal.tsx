@@ -155,7 +155,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose }) => {
           )}
 
           <div className="flex gap-2 justify-end mt-4">
-            {status === 'idle' && (
+            {(status === 'idle' || status === 'error' || status === 'cancelled') && (
               <button
                 className="px-4 py-2 rounded-md bg-indigo-600 text-white disabled:opacity-50"
                 disabled={!canStart}
