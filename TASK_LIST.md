@@ -312,24 +312,24 @@
 
 ---
 
-### **Epic 4.4: Multi-Track Support** ⬜
+### **Epic 4.4: Multi-Track Support** ✅
 
 **Story:** Add support for multiple timeline tracks (main video + overlay/PiP)
 
-- ⬜ **Task 4.4.1:** Add `trackId` property to TimelineClip interface
-- ⬜ **Task 4.4.2:** Define track layout constants (Track 1: y=0, Track 2: y=100, etc.)
-- ⬜ **Task 4.4.3:** Render Track 1 lane on canvas (main video track)
-- ⬜ **Task 4.4.4:** Render Track 2 lane on canvas (overlay/PiP track)
-- ⬜ **Task 4.4.5:** Add track labels ("Track 1", "Track 2") on left side
-- ⬜ **Task 4.4.6:** Calculate which track a clip is dropped on based on Y coordinate
-- ⬜ **Task 4.4.7:** Assign trackId when adding clip to timeline
-- ⬜ **Task 4.4.8:** Render clips on appropriate track based on trackId
-- ⬜ **Task 4.4.9:** Allow moving clips between tracks via drag
-- ⬜ **Task 4.4.10:** Update trackId when clip dragged to different track
-- ⬜ **Task 4.4.11:** Constrain clip Y position to track boundaries
-- ⬜ **Task 4.4.12:** Test clips on different tracks don't interfere with each other
+- ✅ **Task 4.4.1:** Add `trackId` property to TimelineClip interface
+- ✅ **Task 4.4.2:** Define track layout constants (Track 1: y=0, Track 2: y=100, etc.)
+- ✅ **Task 4.4.3:** Render Track 1 lane on canvas (main video track)
+- ✅ **Task 4.4.4:** Render Track 2 lane on canvas (overlay/PiP track)
+- ✅ **Task 4.4.5:** Add track labels ("Track 1", "Track 2") on left side
+- ✅ **Task 4.4.6:** Calculate which track a clip is dropped on based on Y coordinate
+- ✅ **Task 4.4.7:** Assign trackId when adding clip to timeline
+- ✅ **Task 4.4.8:** Render clips on appropriate track based on trackId
+- ✅ **Task 4.4.9:** Allow moving clips between tracks via drag
+- ✅ **Task 4.4.10:** Update trackId when clip dragged to different track
+- ✅ **Task 4.4.11:** Constrain clip Y position to track boundaries
+- ✅ **Task 4.4.12:** Test clips on different tracks don't interfere with each other
 
-**Acceptance:** Timeline shows two distinct track lanes, clips can be placed on Track 1 or Track 2, can drag clips between tracks, each track renders independently. ⬜
+**Acceptance:** Timeline shows two distinct track lanes, clips can be placed on Track 1 or Track 2, can drag clips between tracks, each track renders independently. ✅
 
 ---
 

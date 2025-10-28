@@ -26,6 +26,9 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
   const BASE_PX_PER_SEC = 10; // base density at 1x zoom
   const TIMELINE_HEIGHT = 300;
   const RULER_HEIGHT = 30;
+  const TRACK_LABEL_WIDTH = 80;
+  const TRACK_HEIGHT = 100;
+  const TRACK_GAP = 10;
   const MAJOR_TICK_HEIGHT = 14;
   const MINOR_TICK_HEIGHT = 8;
   const HANDLE_W = 8;
@@ -43,6 +46,7 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
   const selectTimelineClip = useTimelineStore((s) => s.selectTimelineClip);
   const removeClipFromTimeline = useTimelineStore((s) => s.removeClipFromTimeline);
   const updateClip = useTimelineStore((s) => s.updateClip);
+  const moveClipToTrack = useTimelineStore((s) => s.moveClipToTrack);
   const rippleTrimStart = useTimelineStore((s) => s.rippleTrimStart);
   const rippleTrimEnd = useTimelineStore((s) => s.rippleTrimEnd);
   const splitClip = useTimelineStore((s) => s.splitClip);
@@ -187,7 +191,7 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
 
     // Determine track by Y (simple 2 tracks below ruler)
     const trackAreaTop = RULER_HEIGHT + 10;
-    const trackHeight = 100; // per track visual lane
+    const trackHeight = TRACK_HEIGHT; // per track visual lane
     let trackId = 1;
     if (yInContainer >= trackAreaTop + trackHeight) {
       trackId = 2;
@@ -351,6 +355,23 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                 <Line points={[0, RULER_HEIGHT, stageWidth, RULER_HEIGHT]} stroke="#e5e7eb" strokeWidth={1} />
               </Group>
 
+              {/* Track lanes & labels */}
+              {(() => {
+                const trackAreaTop = RULER_HEIGHT + 10;
+                const y1 = trackAreaTop;
+                const y2 = trackAreaTop + TRACK_HEIGHT;
+                return (
+                  <Group>
+                    {/* Track 1 lane */}
+                    <Rect x={0} y={y1} width={stageWidth} height={TRACK_HEIGHT - TRACK_GAP} fill="#f3f4f6" />
+                    <Text x={6} y={y1 + 6} text="Track 1" fontSize={12} fill="#6b7280" />
+                    {/* Track 2 lane */}
+                    <Rect x={0} y={y2} width={stageWidth} height={TRACK_HEIGHT - TRACK_GAP} fill="#f3f4f6" />
+                    <Text x={6} y={y2 + 6} text="Track 2" fontSize={12} fill="#6b7280" />
+                  </Group>
+                );
+              })()}
+
               {/* Timeline Clips */}
               {timelineClips.map((clip) => {
                 // VISUAL TRIM: Only show the trimmed (visible) portion of the clip
@@ -361,8 +382,10 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                 const width = Math.max(1, trimmedDuration * pixelsPerSecond);
                 
                 const trackAreaTop = RULER_HEIGHT + 10;
-                const trackHeight = 100;
-                const y = clip.trackId === 2 ? trackAreaTop + trackHeight : trackAreaTop;
+                const trackHeight = TRACK_HEIGHT;
+                const y1 = trackAreaTop;
+                const y2 = trackAreaTop + trackHeight;
+                const y = clip.trackId === 2 ? y2 : y1;
                 const media = mediaClips.find((m) => m.id === clip.mediaId);
                 const label = media?.filename ?? clip.mediaId;
                 const isSelected = selectedTimelineClipId === clip.id;
@@ -396,7 +419,11 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                     draggable={groupDraggable}
                     dragBoundFunc={(pos) => {
                       const clampedX = Math.max(0, Math.min(stageWidth - width, pos.x));
-                      return { x: clampedX, y };
+                      const trackAreaTopLocal = RULER_HEIGHT + 10;
+                      const minY = trackAreaTopLocal;
+                      const maxY = trackAreaTopLocal + TRACK_HEIGHT; // allow moving into second lane
+                      const clampedY = Math.max(minY, Math.min(maxY, pos.y));
+                      return { x: clampedX, y: clampedY };
                     }}
                     onClick={() => selectTimelineClip(clip.id)}
                     onDragStart={(e) => {
@@ -411,12 +438,16 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                         return;
                       }
                       const newX = e.target.x();
+                      const newY = e.target.y();
                       let newStart = Math.round((newX / pixelsPerSecond) * 10) / 10;
                       const durationSec = clip.endTime - clip.startTime;
                       
                       // snap-to-previous/next edges on same track within epsilon
                       const EPS = 0.05; // 50ms tolerance
-                      const sameTrack = timelineClips.filter(c => c.trackId === clip.trackId && c.id !== clip.id);
+                      // Determine target track by final Y
+                      const trackAreaTopLocal = RULER_HEIGHT + 10;
+                      const targetTrackId = newY >= trackAreaTopLocal + TRACK_HEIGHT ? 2 : 1;
+                      const sameTrack = timelineClips.filter(c => c.trackId === targetTrackId && c.id !== clip.id);
                       const neighborEdges = sameTrack.flatMap(c => [c.startTime, c.endTime]);
 
                       const nearestEdge = neighborEdges.reduce<{edge:number, d:number} | null>((best, edge) => {
@@ -428,6 +459,9 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                       const snappedStart = nearestEdge ? nearestEdge.edge : newStart;
                       const snappedEnd = Math.min(roundedTo10, snappedStart + durationSec);
                       updateClip(clip.id, { startTime: snappedStart, endTime: snappedEnd });
+                      if (clip.trackId !== targetTrackId) {
+                        moveClipToTrack(clip.id, targetTrackId);
+                      }
                     }}
                   >
                     <Rect

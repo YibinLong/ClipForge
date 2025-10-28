@@ -2,14 +2,18 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTimelineStore } from '../stores/timelineStore';
 
 interface VideoPlayerProps {
-  /** Absolute file URL using file:// scheme, or null when nothing selected */
-  src: string | null;
-  /** When provided, external timeline controls playback */
+  /** Back-compat single source (mapped to baseSrc) */
+  src?: string | null;
+  /** Base (Track 1) source and time */
+  baseSrc?: string | null;
+  baseExternalTime?: number | null;
+  /** Overlay (Track 2) source and time */
+  overlaySrc?: string | null;
+  overlayExternalTime?: number | null;
+  /** External playback control applies to both */
   externalIsPlaying?: boolean;
-  /** When provided, external timeline controls currentTime in seconds */
-  externalTime?: number | null;
-  /** Reports current media time (seconds within source) back to parent */
-  onMediaTimeUpdate?: (mediaTime: number) => void;
+  /** Reports base media time (seconds within source) back to parent */
+  onBaseMediaTimeUpdate?: (mediaTime: number) => void;
 }
 
 function formatTime(seconds: number): string {
@@ -19,47 +23,57 @@ function formatTime(seconds: number): string {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, externalIsPlaying, externalTime, onMediaTimeUpdate }) => {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, baseSrc, overlaySrc, externalIsPlaying, baseExternalTime, overlayExternalTime, onBaseMediaTimeUpdate }) => {
+  const baseVideoRef = useRef<HTMLVideoElement | null>(null);
+  const overlayVideoRef = useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [hasError, setHasError] = useState<string | null>(null);
+  const [audioSource, setAudioSource] = useState<'track1' | 'track2'>('track1');
   const playTimeline = useTimelineStore((s) => s.play);
   const pauseTimeline = useTimelineStore((s) => s.pause);
 
+  // Normalize props: prefer explicit baseSrc, else fall back to legacy src
+  const effectiveBaseSrc = typeof baseSrc !== 'undefined' ? baseSrc : (typeof src !== 'undefined' ? src : null);
+
   // Reset player state when src changes
   useEffect(() => {
-    const video = videoRef.current;
+    const base = baseVideoRef.current;
     setHasError(null);
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
 
-    if (video) {
+    if (base) {
       try {
-        video.pause();
-        // Force reload of media element source
-        // Using load() ensures metadata events fire when src updates
-        video.load();
+        base.pause();
+        base.load();
       } catch {}
     }
-  }, [src]);
+    const overlay = overlayVideoRef.current;
+    if (overlay) {
+      try {
+        overlay.pause();
+        overlay.load();
+      } catch {}
+    }
+  }, [effectiveBaseSrc, overlaySrc]);
 
   // Attach media event listeners
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    const base = baseVideoRef.current;
+    if (!base) return;
 
     const onLoadedMetadata = () => {
-      setDuration(Number.isFinite(video.duration) ? video.duration : 0);
-      setCurrentTime(Number.isFinite(video.currentTime) ? video.currentTime : 0);
+      setDuration(Number.isFinite(base.duration) ? base.duration : 0);
+      setCurrentTime(Number.isFinite(base.currentTime) ? base.currentTime : 0);
     };
     const onTimeUpdate = () => {
-      const t = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+      const t = Number.isFinite(base.currentTime) ? base.currentTime : 0;
       setCurrentTime(t);
-      if (onMediaTimeUpdate) onMediaTimeUpdate(t);
+      if (onBaseMediaTimeUpdate) onBaseMediaTimeUpdate(t);
     };
     const onEnded = () => {
       setIsPlaying(false);
@@ -69,54 +83,79 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, externalIsPlaying, exter
       setIsPlaying(false);
     };
 
-    video.addEventListener('loadedmetadata', onLoadedMetadata);
-    video.addEventListener('timeupdate', onTimeUpdate);
-    video.addEventListener('ended', onEnded);
-    video.addEventListener('error', onError);
+    base.addEventListener('loadedmetadata', onLoadedMetadata);
+    base.addEventListener('timeupdate', onTimeUpdate);
+    base.addEventListener('ended', onEnded);
+    base.addEventListener('error', onError);
 
     return () => {
-      video.removeEventListener('loadedmetadata', onLoadedMetadata);
-      video.removeEventListener('timeupdate', onTimeUpdate);
-      video.removeEventListener('ended', onEnded);
-      video.removeEventListener('error', onError);
+      base.removeEventListener('loadedmetadata', onLoadedMetadata);
+      base.removeEventListener('timeupdate', onTimeUpdate);
+      base.removeEventListener('ended', onEnded);
+      base.removeEventListener('error', onError);
     };
-  }, [src, onMediaTimeUpdate]);
+  }, [effectiveBaseSrc, onBaseMediaTimeUpdate]);
 
   // Drive playback from externalIsPlaying
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video || src == null || hasError) return;
+    const base = baseVideoRef.current;
+    const overlay = overlayVideoRef.current;
+    if (!effectiveBaseSrc || hasError) return;
     const sync = async () => {
       try {
-        if (externalIsPlaying) {
-          await video.play();
+        if (typeof externalIsPlaying === 'boolean' && externalIsPlaying) {
+          if (base) await base.play();
+          if (overlay && overlaySrc) await overlay.play();
           setIsPlaying(true);
         } else {
-          video.pause();
+          if (base) base.pause();
+          if (overlay) overlay.pause();
           setIsPlaying(false);
         }
       } catch {
         // ignore play promise errors
       }
     };
-    if (typeof externalIsPlaying === 'boolean') {
-      void sync();
-    }
-  }, [externalIsPlaying, src, hasError]);
+    void sync();
+  }, [externalIsPlaying, effectiveBaseSrc, overlaySrc, hasError]);
 
   // Seek to externalTime (only when drift is noticeable)
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video || src == null || hasError) return;
-    if (typeof externalTime !== 'number' || !isFinite(externalTime)) return;
-    const drift = Math.abs((video.currentTime ?? 0) - externalTime);
+    const base = baseVideoRef.current;
+    if (!base || effectiveBaseSrc == null || hasError) return;
+    if (typeof baseExternalTime !== 'number' || !isFinite(baseExternalTime)) return;
+    const drift = Math.abs((base.currentTime ?? 0) - baseExternalTime);
     if (drift > 0.2) {
       try {
-        video.currentTime = Math.max(0, externalTime);
-        setCurrentTime(Math.max(0, externalTime));
+        base.currentTime = Math.max(0, baseExternalTime);
+        setCurrentTime(Math.max(0, baseExternalTime));
       } catch {}
     }
-  }, [externalTime, src, hasError]);
+  }, [baseExternalTime, effectiveBaseSrc, hasError]);
+
+  // Sync overlay current time when provided
+  useEffect(() => {
+    const overlay = overlayVideoRef.current;
+    if (!overlay || overlaySrc == null) return;
+    if (typeof overlayExternalTime !== 'number' || !isFinite(overlayExternalTime)) return;
+    try {
+      overlay.currentTime = Math.max(0, overlayExternalTime);
+    } catch {}
+  }, [overlayExternalTime, overlaySrc]);
+
+  // Mute routing based on selected audio source
+  useEffect(() => {
+    const base = baseVideoRef.current;
+    const overlay = overlayVideoRef.current;
+    if (base) {
+      base.muted = audioSource !== 'track1';
+      base.volume = volume;
+    }
+    if (overlay) {
+      overlay.muted = audioSource !== 'track2';
+      overlay.volume = volume;
+    }
+  }, [audioSource, volume]);
 
   const progress = useMemo(() => {
     if (!duration || !isFinite(duration)) return 0;
@@ -124,8 +163,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, externalIsPlaying, exter
   }, [currentTime, duration]);
 
   const togglePlay = async () => {
-    const video = videoRef.current;
-    if (!video || !src || hasError) return;
+    const video = baseVideoRef.current;
+    if (!video || !effectiveBaseSrc || hasError) return;
     // If external control is present, delegate to timeline store as single source of truth
     if (typeof externalIsPlaying === 'boolean') {
       try {
@@ -153,7 +192,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, externalIsPlaying, exter
   };
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const video = videoRef.current;
+    const video = baseVideoRef.current;
     if (!video || !duration) return;
     const percentage = Number(e.target.value);
     const newTime = (percentage / 100) * duration;
@@ -162,12 +201,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, externalIsPlaying, exter
   };
 
   const handleVolume = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const video = videoRef.current;
     const vol = Math.max(0, Math.min(1, Number(e.target.value)));
     setVolume(vol);
-    if (video) {
-      video.volume = vol;
-    }
+    // volumes applied via effect
   };
 
   return (
@@ -187,21 +223,30 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, externalIsPlaying, exter
           </div>
         ) : null}
 
-        <video
-          ref={videoRef}
-          controls
-          className="w-full h-full"
-        >
-          {src ? <source src={src} /> : null}
+        {/* Base video (Track 1) */}
+        <video ref={baseVideoRef} controls className="w-full h-full">
+          {effectiveBaseSrc ? <source src={effectiveBaseSrc} /> : null}
         </video>
+
+        {/* Overlay video (Track 2) */}
+        {overlaySrc ? (
+          <video
+            ref={overlayVideoRef}
+            className="absolute rounded-lg shadow-lg"
+            style={{ width: 240, height: 'auto', right: 16, bottom: 16 }}
+            muted={audioSource !== 'track2'}
+          >
+            <source src={overlaySrc} />
+          </video>
+        ) : null}
 
         {/* Overlay play/pause button */}
         <button
           type="button"
           onClick={togglePlay}
-          disabled={!src || !!hasError}
+          disabled={!effectiveBaseSrc || !!hasError}
           className={`absolute inset-0 m-auto h-16 w-16 flex items-center justify-center rounded-full shadow-lg transition
-            ${!src || hasError ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'}
+            ${!effectiveBaseSrc || hasError ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'}
           `}
           style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
           aria-label={isPlaying ? 'Pause' : 'Play'}
@@ -212,10 +257,36 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, externalIsPlaying, exter
 
       {/* Controls */}
       <div className="mt-4 space-y-3">
+        {/* Audio source toggle */}
+        <div className="flex items-center gap-4 text-sm text-gray-700">
+          <span className="text-gray-700">🔈 Audio source</span>
+          <label className="inline-flex items-center gap-1">
+            <input
+              type="radio"
+              name="audio-source"
+              value="track1"
+              checked={audioSource === 'track1'}
+              onChange={() => setAudioSource('track1')}
+              className="accent-blue-600"
+            />
+            <span>Track 1</span>
+          </label>
+          <label className="inline-flex items-center gap-1">
+            <input
+              type="radio"
+              name="audio-source"
+              value="track2"
+              checked={audioSource === 'track2'}
+              onChange={() => setAudioSource('track2')}
+              className="accent-blue-600"
+            />
+            <span>Track 2</span>
+          </label>
+        </div>
         {/* Time and progress */}
         <div className="flex items-center justify-between text-sm text-gray-700">
           <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
-          <span className="text-gray-400">{src ? '' : 'No clip selected'}</span>
+          <span className="text-gray-400">{effectiveBaseSrc ? '' : 'No clip selected'}</span>
         </div>
         <input
           type="range"
@@ -224,7 +295,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, externalIsPlaying, exter
           step={0.1}
           value={progress}
           onChange={handleSeek}
-          disabled={!src || !duration || !!hasError}
+          disabled={!effectiveBaseSrc || !duration || !!hasError}
           className="w-full accent-blue-600"
         />
 
