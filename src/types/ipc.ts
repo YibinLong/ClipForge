@@ -13,6 +13,8 @@
  * - Request/Response interfaces use PascalCase with suffix (e.g., TestMessageRequest)
  */
 
+import { MediaClip } from './media';
+
 /**
  * IPC_CHANNELS - All available IPC channel names
  * 
@@ -29,13 +31,14 @@ export const IPC_CHANNELS = {
   /**
    * Import file channel for opening file picker dialog
    * Opens native file dialog to select video files (.mp4, .mov, .webm)
-   * Returns array of selected file paths
+   * Extracts metadata and generates thumbnails for each file
+   * Returns array of complete MediaClip objects
    */
   IMPORT_FILE: 'import-file',
   
   // Future channels will be added here as we implement more features:
-  // GET_VIDEO_METADATA: 'get-video-metadata',
   // START_RECORDING: 'start-recording',
+  // EXPORT_VIDEO: 'export-video',
   // etc.
 } as const;
 
@@ -80,11 +83,16 @@ export interface TestMessageResponse {
 /**
  * Response payload for import-file channel
  * 
- * This is what the main process sends back after user selects files
+ * This is what the main process sends back after user selects files.
+ * Each file is processed to extract metadata and generate a thumbnail.
+ * 
+ * CHANGED IN EPIC 2.2:
+ * - Previously returned filePaths: string[]
+ * - Now returns clips: MediaClip[] with full metadata
  */
 export interface ImportFileResponse {
-  /** Array of selected file paths (absolute paths) */
-  filePaths: string[];
+  /** Array of MediaClip objects with metadata and thumbnails */
+  clips: MediaClip[];
   /** Whether the request was successful */
   success: true;
 }
@@ -134,7 +142,9 @@ export function isIPCError(response: unknown): response is IPCErrorResponse {
  * Union type of all successful response types
  * Add new response types here as we implement more handlers
  */
-export type IPCResponse = TestMessageResponse | ImportFileResponse;
+export type IPCResponse = 
+  | TestMessageResponse 
+  | ImportFileResponse;
 
 /**
  * Combined response type that includes potential errors
