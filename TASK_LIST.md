@@ -249,25 +249,25 @@
 
 ## **PHASE 4: BASIC EDITING (MVP)** ⬜
 
-### **Epic 4.1: Trim Functionality** ⬜
+### **Epic 4.1: Trim Functionality** ✅
 
 **Story:** Allow users to trim clips by dragging edge handles on the timeline
 
-- ⬜ **Task 4.1.1:** Add trim handles (small rectangles) on left and right edges of timeline clips
-- ⬜ **Task 4.1.2:** Make trim handles draggable horizontally
-- ⬜ **Task 4.1.3:** Detect which handle is being dragged (left = trim start, right = trim end)
-- ⬜ **Task 4.1.4:** Calculate new trimStart time based on left handle position
-- ⬜ **Task 4.1.5:** Calculate new trimEnd time based on right handle position
-- ⬜ **Task 4.1.6:** Update clip's trimStart/trimEnd in timeline store
-- ⬜ **Task 4.1.7:** Constrain trim values to [0, clip.duration]
-- ⬜ **Task 4.1.8:** Update clip visual width based on trimmed duration
-- ⬜ **Task 4.1.9:** Add `trimStart` and `trimEnd` to TimelineClip interface
-- ⬜ **Task 4.1.10:** Pass trim info to video player for preview
-- ⬜ **Task 4.1.11:** Clamp video player currentTime to trimmed range
-- ⬜ **Task 4.1.12:** Show trim values as tooltip during drag
-- ⬜ **Task 4.1.13:** Test trimming updates preview correctly
+- ✅ **Task 4.1.1:** Add trim handles (small rectangles) on left and right edges of timeline clips
+- ✅ **Task 4.1.2:** Make trim handles draggable horizontally
+- ✅ **Task 4.1.3:** Detect which handle is being dragged (left = trim start, right = trim end)
+- ✅ **Task 4.1.4:** Calculate new trimStart time based on left handle position
+- ✅ **Task 4.1.5:** Calculate new trimEnd time based on right handle position
+- ✅ **Task 4.1.6:** Update clip's trimStart/trimEnd in timeline store
+- ✅ **Task 4.1.7:** Constrain trim values to [0, clip.duration]
+- ✅ **Task 4.1.8:** Update clip visual width based on trimmed duration
+- ✅ **Task 4.1.9:** Add `trimStart` and `trimEnd` to TimelineClip interface
+- ✅ **Task 4.1.10:** Pass trim info to video player for preview
+- ✅ **Task 4.1.11:** Clamp video player currentTime to trimmed range
+- ✅ **Task 4.1.12:** Show trim values as tooltip during drag
+- ✅ **Task 4.1.13:** Test trimming updates preview correctly
 
-**Acceptance:** Dragging clip edges trims video non-destructively, preview player respects trim start/end points, trim values constrained to valid range. ⬜
+**Acceptance:** Dragging clip edges trims video non-destructively, preview player respects trim start/end points, trim values constrained to valid range. ✅
 
 ---
 
