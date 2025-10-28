@@ -187,7 +187,7 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
       startTime,
       endTime,
       trimStart: 0,
-      trimEnd: duration,
+      trimEnd: Math.min(duration, endTime - startTime),
     };
     addClipToTimeline(newClip);
   };
