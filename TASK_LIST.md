@@ -335,25 +335,25 @@
 
 ## **PHASE 5: EXPORT SYSTEM (MVP)** ⬜
 
-### **Epic 5.1: FFmpeg Export Pipeline** ⬜
+### **Epic 5.1: FFmpeg Export Pipeline** ✅
 
 **Story:** Implement basic video export for single clip using FFmpeg
 
-- ⬜ **Task 5.1.1:** Create "Export" button in main UI
-- ⬜ **Task 5.1.2:** Create IPC handler `start-export` in main process
-- ⬜ **Task 5.1.3:** Implement file save dialog for output path (dialog.showSaveDialog)
-- ⬜ **Task 5.1.4:** Set default filename and filter to `.mp4`
-- ⬜ **Task 5.1.5:** Create `src/main/services/export.ts` module
-- ⬜ **Task 5.1.6:** Build basic FFmpeg command for single clip export
-- ⬜ **Task 5.1.7:** Use fluent-ffmpeg to encode clip to MP4 (H.264 codec)
-- ⬜ **Task 5.1.8:** Set audio codec to AAC
-- ⬜ **Task 5.1.9:** Run FFmpeg command and save to output path
-- ⬜ **Task 5.1.10:** Return success/error status to renderer
-- ⬜ **Task 5.1.11:** Show success notification when export completes
-- ⬜ **Task 5.1.12:** Test exported MP4 plays in VLC or QuickTime
-- ⬜ **Task 5.1.13:** Handle FFmpeg errors gracefully (show error message)
+- ✅ **Task 5.1.1:** Create "Export" button in main UI
+- ✅ **Task 5.1.2:** Create IPC handler `start-export` in main process
+- ✅ **Task 5.1.3:** Implement file save dialog for output path (dialog.showSaveDialog)
+- ✅ **Task 5.1.4:** Set default filename and filter to `.mp4`
+- ✅ **Task 5.1.5:** Create `src/main/services/export.ts` module
+- ✅ **Task 5.1.6:** Build basic FFmpeg command for single clip export
+- ✅ **Task 5.1.7:** Use fluent-ffmpeg to encode clip to MP4 (H.264 codec)
+- ✅ **Task 5.1.8:** Set audio codec to AAC
+- ✅ **Task 5.1.9:** Run FFmpeg command and save to output path
+- ✅ **Task 5.1.10:** Return success/error status to renderer
+- ✅ **Task 5.1.11:** Show success notification when export completes
+- ✅ **Task 5.1.12:** Test exported MP4 plays in VLC or QuickTime
+- ✅ **Task 5.1.13:** Handle FFmpeg errors gracefully (show error message)
 
-**Acceptance:** Can export single timeline clip to MP4, file saves to chosen location, video plays correctly in external media player. ⬜
+**Acceptance:** Can export single timeline clip to MP4, file saves to chosen location, video plays correctly in external media player. ✅
 
 ---
 
