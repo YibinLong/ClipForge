@@ -17,6 +17,10 @@ if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
+// Allow file:// pages to load other file:// resources anywhere on disk
+// Needed so the renderer can play local videos by absolute path in packaged app
+app.commandLine.appendSwitch('allow-file-access-from-files');
+
 const createWindow = (): void => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -30,7 +34,7 @@ const createWindow = (): void => {
       // NOTE: sandbox is disabled due to webpack asset-relocator-loader __dirname issue
       // contextIsolation + nodeIntegration:false still provides strong security
       sandbox: false,
-      // LAX for local app: allow file:// resources in dev and while loading thumbnails
+      // LAX for local app: allow file:// resources in dev and packaged
       webSecurity: false,
       allowRunningInsecureContent: true,
     },
