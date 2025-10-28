@@ -79,6 +79,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, baseSrc, overlaySrc, ext
       setIsPlaying(false);
     };
     const onError = () => {
+      // Extra debug info in renderer console
+      const src = effectiveBaseSrc ?? '(no src)';
+      console.error('[VIDEO] Error loading video source:', src);
       setHasError('Failed to load video. The file may have moved or is inaccessible.');
       setIsPlaying(false);
     };
