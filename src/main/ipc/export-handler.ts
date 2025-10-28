@@ -58,7 +58,7 @@ export async function handleStartExport(
     return err;
   }
 
-  const baseName = (suggestedName ? suggestedName : path.parse(source.filename).name + '-export').replace(/\.mp4$/i, '');
+  const baseName = (suggestedName ? suggestedName : (path.parse(source.filename).name + '-export')).replace(/\.mp4$/i, '');
 
   const saveRes = await dialog.showSaveDialog({
     title: 'Export MP4',
