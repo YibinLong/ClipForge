@@ -177,25 +177,25 @@
 
 ---
 
-### **Epic 3.2: Timeline State Management** ⬜
+### **Epic 3.2: Timeline State Management** ✅
 
 **Story:** Create Zustand store for timeline data and playhead synchronization
 
-- ⬜ **Task 3.2.1:** Create `src/renderer/stores/timelineStore.ts`
-- ⬜ **Task 3.2.2:** Define TimelineClip interface in `src/types/timeline.ts`
-- ⬜ **Task 3.2.3:** Define state: `{ clips: TimelineClip[], playheadPosition: number, zoomLevel: number, selectedClipId: string | null }`
-- ⬜ **Task 3.2.4:** Implement `addClipToTimeline(clip)` action
-- ⬜ **Task 3.2.5:** Implement `removeClipFromTimeline(clipId)` action
-- ⬜ **Task 3.2.6:** Implement `updateClip(clipId, updates)` action
-- ⬜ **Task 3.2.7:** Implement `setPlayheadPosition(time)` action
-- ⬜ **Task 3.2.8:** Implement `setZoomLevel(level)` action
-- ⬜ **Task 3.2.9:** Implement `selectTimelineClip(clipId)` action
-- ⬜ **Task 3.2.10:** Connect Timeline component to timelineStore
-- ⬜ **Task 3.2.11:** Sync playhead canvas position with store playheadPosition
-- ⬜ **Task 3.2.12:** Update store when playhead dragged on canvas
-- ⬜ **Task 3.2.13:** Test adding/removing clips updates state correctly
+- ✅ **Task 3.2.1:** Create `src/renderer/stores/timelineStore.ts`
+- ✅ **Task 3.2.2:** Define TimelineClip interface in `src/types/timeline.ts`
+- ✅ **Task 3.2.3:** Define state: `{ clips: TimelineClip[], playheadPosition: number, zoomLevel: number, selectedClipId: string | null }`
+- ✅ **Task 3.2.4:** Implement `addClipToTimeline(clip)` action
+- ✅ **Task 3.2.5:** Implement `removeClipFromTimeline(clipId)` action
+- ✅ **Task 3.2.6:** Implement `updateClip(clipId, updates)` action
+- ✅ **Task 3.2.7:** Implement `setPlayheadPosition(time)` action
+- ✅ **Task 3.2.8:** Implement `setZoomLevel(level)` action
+- ✅ **Task 3.2.9:** Implement `selectTimelineClip(clipId)` action
+- ✅ **Task 3.2.10:** Connect Timeline component to timelineStore
+- ✅ **Task 3.2.11:** Sync playhead canvas position with store playheadPosition
+- ✅ **Task 3.2.12:** Update store when playhead dragged on canvas
+- ✅ **Task 3.2.13:** Test adding/removing clips updates state correctly
 
-**Acceptance:** Timeline state managed by Zustand, playhead position syncs between canvas and state, zoom level persists, can add/remove clips programmatically. ⬜
+**Acceptance:** Timeline state managed by Zustand, playhead position syncs between canvas and state, zoom level persists, can add/remove clips programmatically. ✅
 
 ---
 
