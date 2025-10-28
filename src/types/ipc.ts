@@ -36,6 +36,16 @@ export const IPC_CHANNELS = {
    */
   IMPORT_FILE: 'import-file',
   
+  /**
+   * Persist media library to disk via main process (electron-store)
+   */
+  SAVE_MEDIA_LIBRARY: 'save-media-library',
+  
+  /**
+   * Load media library from disk via main process (electron-store)
+   */
+  LOAD_MEDIA_LIBRARY: 'load-media-library',
+  
   // Future channels will be added here as we implement more features:
   // START_RECORDING: 'start-recording',
   // EXPORT_VIDEO: 'export-video',
@@ -97,6 +107,23 @@ export interface ImportFileResponse {
   success: true;
 }
 
+// ============================================================================
+// MEDIA LIBRARY PERSISTENCE
+// ============================================================================
+
+export interface SaveMediaLibraryRequest {
+  clips: MediaClip[];
+}
+
+export interface SaveMediaLibraryResponse {
+  success: true;
+}
+
+export interface LoadMediaLibraryResponse {
+  success: true;
+  clips: MediaClip[];
+}
+
 /**
  * Error response structure used across all IPC handlers
  * 
@@ -144,7 +171,9 @@ export function isIPCError(response: unknown): response is IPCErrorResponse {
  */
 export type IPCResponse = 
   | TestMessageResponse 
-  | ImportFileResponse;
+  | ImportFileResponse
+  | SaveMediaLibraryResponse
+  | LoadMediaLibraryResponse;
 
 /**
  * Combined response type that includes potential errors
