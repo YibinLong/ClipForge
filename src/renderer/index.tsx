@@ -8,6 +8,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
+import IPCTest from './components/IPCTest';
 
 // Verify that the Electron API is available
 if (window.electron) {
@@ -26,62 +27,73 @@ if (window.electron) {
  */
 const App: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center p-8">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full">
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 p-8">
+      <div className="max-w-6xl mx-auto space-y-6">
         {/* Header Section */}
-        <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">
-            🎬 ClipForge
-          </h1>
-          <p className="text-lg text-green-600 font-semibold">
-            ✅ Dependencies Loaded Successfully
-          </p>
+        <div className="bg-white rounded-2xl shadow-2xl p-8">
+          <div className="text-center mb-6">
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">
+              🎬 ClipForge
+            </h1>
+            <p className="text-lg text-green-600 font-semibold">
+              ✅ Dependencies Loaded Successfully
+            </p>
+          </div>
+
+          {/* Status Cards */}
+          <div className="space-y-3">
+            <StatusCard 
+              icon="⚛️" 
+              title="React" 
+              description="UI framework initialized and rendering"
+              status="Ready"
+            />
+            <StatusCard 
+              icon="🎨" 
+              title="TailwindCSS" 
+              description="Utility-first styling framework active"
+              status="Ready"
+            />
+            <StatusCard 
+              icon="📦" 
+              title="Zustand" 
+              description="State management library installed"
+              status="Ready"
+            />
+            <StatusCard 
+              icon="🎥" 
+              title="FFmpeg" 
+              description="Video processing tools ready"
+              status="Ready"
+            />
+            <StatusCard 
+              icon="🎭" 
+              title="Konva" 
+              description="Canvas library for timeline rendering"
+              status="Ready"
+            />
+            <StatusCard 
+              icon="💾" 
+              title="Electron Store" 
+              description="Persistent data storage configured"
+              status="Ready"
+            />
+            <StatusCard 
+              icon="🔗" 
+              title="IPC Infrastructure" 
+              description="Inter-Process Communication setup complete"
+              status="Ready"
+            />
+          </div>
+
+          {/* Footer */}
+          <div className="mt-6 text-center text-sm text-gray-500">
+            Epic 1.2: Core Dependencies Installation - Complete
+          </div>
         </div>
 
-        {/* Status Cards */}
-        <div className="space-y-3">
-          <StatusCard 
-            icon="⚛️" 
-            title="React" 
-            description="UI framework initialized and rendering"
-            status="Ready"
-          />
-          <StatusCard 
-            icon="🎨" 
-            title="TailwindCSS" 
-            description="Utility-first styling framework active"
-            status="Ready"
-          />
-          <StatusCard 
-            icon="📦" 
-            title="Zustand" 
-            description="State management library installed"
-            status="Ready"
-          />
-          <StatusCard 
-            icon="🎥" 
-            title="FFmpeg" 
-            description="Video processing tools ready"
-            status="Ready"
-          />
-          <StatusCard 
-            icon="🎭" 
-            title="Konva" 
-            description="Canvas library for timeline rendering"
-            status="Ready"
-          />
-          <StatusCard 
-            icon="💾" 
-            title="Electron Store" 
-            description="Persistent data storage configured"
-            status="Ready"
-          />
-        </div>
-
-        {/* Footer */}
-        <div className="mt-6 text-center text-sm text-gray-500">
-          Epic 1.2: Core Dependencies Installation - Complete
-        </div>
+        {/* IPC Test Component */}
+        <IPCTest />
       </div>
     </div>
   );
