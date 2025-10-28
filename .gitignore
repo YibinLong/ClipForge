@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build outputs
+dist/
+out/
+.webpack/
+
+# Environment
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Electron
+userData/
+recordings/
+projects/
+
+# Temp files
+tmp/
+temp/
+*.tmp
+
+# FFmpeg outputs
+*.webm.tmp
+*.mp4.tmp
