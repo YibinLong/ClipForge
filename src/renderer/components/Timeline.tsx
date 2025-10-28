@@ -862,11 +862,6 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
 
       {/* Export Modal */}
       <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} />
-
-      {/* Footer */}
-      <div className="mt-4 text-center text-xs text-gray-500">
-        Epic 3.1: Timeline UI (Konva Canvas)
-      </div>
     </div>
   );
 };

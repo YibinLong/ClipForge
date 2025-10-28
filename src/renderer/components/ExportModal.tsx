@@ -23,6 +23,17 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose }) => {
 
   const canStart = useMemo(() => timeline.some((c) => c.trackId === 1), [timeline]);
 
+  // Reset all state when modal opens
+  useEffect(() => {
+    if (open) {
+      setProgress(0);
+      setStatus('idle');
+      setEta(undefined);
+      setError(null);
+      setInFlight(false);
+    }
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const unsubscribe = onExportProgress((e: ExportProgressEvent) => {
@@ -131,8 +142,20 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose }) => {
             <div className="text-red-600 text-sm">{error}</div>
           )}
 
+          {status === 'complete' && (
+            <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm">
+              <div className="flex items-center gap-2 text-green-800 font-semibold mb-1">
+                <span className="text-lg">✅</span>
+                <span>Export Complete!</span>
+              </div>
+              <p className="text-green-700 text-xs">
+                Your video has been saved. Check the folder you selected to find your exported file.
+              </p>
+            </div>
+          )}
+
           <div className="flex gap-2 justify-end mt-4">
-            {!inFlight && (
+            {(status === 'idle' || status === 'error' || status === 'cancelled') && (
               <button
                 className="px-4 py-2 rounded-md bg-indigo-600 text-white disabled:opacity-50"
                 disabled={!canStart}

@@ -242,20 +242,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, baseSrc, overlaySrc, ext
             <source src={overlaySrc} />
           </video>
         ) : null}
-
-        {/* Overlay play/pause button */}
-        <button
-          type="button"
-          onClick={togglePlay}
-          disabled={!effectiveBaseSrc || !!hasError}
-          className={`absolute inset-0 m-auto h-16 w-16 flex items-center justify-center rounded-full shadow-lg transition
-            ${!effectiveBaseSrc || hasError ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'}
-          `}
-          style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
-          aria-label={isPlaying ? 'Pause' : 'Play'}
-        >
-          <span className="text-white text-3xl">{isPlaying ? '❚❚' : '▶'}</span>
-        </button>
       </div>
 
       {/* Controls */}
