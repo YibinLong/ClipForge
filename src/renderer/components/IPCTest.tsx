@@ -34,6 +34,11 @@ export const IPCTest: React.FC = () => {
   const [response, setResponse] = useState<TestMessageResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // State for tracking round-trip time
+  // This records when we SEND the request, so we can calculate the full round-trip duration
+  const [requestStartTime, setRequestStartTime] = useState<number | null>(null);
+  const [roundTripTime, setRoundTripTime] = useState<number | null>(null);
 
   /**
    * Handle sending test message
@@ -48,6 +53,7 @@ export const IPCTest: React.FC = () => {
     // Clear previous results
     setResponse(null);
     setError(null);
+    setRoundTripTime(null);
 
     // Validate input
     if (!message.trim()) {
@@ -58,9 +64,22 @@ export const IPCTest: React.FC = () => {
     // Set loading state
     setIsLoading(true);
 
+    // ===== CAPTURE START TIME =====
+    // Record when we START the IPC call (before await)
+    // This is the beginning of the round-trip journey
+    const startTime = Date.now();
+    setRequestStartTime(startTime);
+
     try {
       // Call the IPC function (from utils/ipc.ts)
       const result = await testMessage(message);
+
+      // ===== CAPTURE END TIME =====
+      // Record when we RECEIVE the response (after await)
+      // This is the end of the round-trip journey
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      setRoundTripTime(duration);
 
       // Check if result is an error
       if ('success' in result && result.success === false) {
@@ -175,12 +194,14 @@ export const IPCTest: React.FC = () => {
                         {new Date(response.timestamp).toLocaleString()}
                       </span>
                     </div>
-                    <div className="flex gap-2">
-                      <span className="font-medium text-green-700">Round-trip time:</span>
-                      <span className="text-green-900">
-                        {Date.now() - response.timestamp}ms
-                      </span>
-                    </div>
+                    {roundTripTime !== null && (
+                      <div className="flex gap-2">
+                        <span className="font-medium text-green-700">Round-trip time:</span>
+                        <span className="text-green-900">
+                          {roundTripTime}ms
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
