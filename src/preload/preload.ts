@@ -147,6 +147,29 @@ contextBridge.exposeInMainWorld('electron', {
       ipcRenderer.removeListener(channel, subscription);
     };
   },
+
+  /**
+   * Convenience: listen to export progress events
+   */
+  onExportProgress: (callback: (...args: unknown[]) => void) => {
+    if (!isChannelAllowed(IPC_CHANNELS.EXPORT_PROGRESS)) {
+      console.error('[PRELOAD] EXPORT_PROGRESS channel not allowed');
+      return () => {};
+    }
+    const sub = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => callback(...args);
+    ipcRenderer.on(IPC_CHANNELS.EXPORT_PROGRESS, sub);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.EXPORT_PROGRESS, sub);
+  },
+
+  /**
+   * Convenience: request export cancellation
+   */
+  cancelExport: (jobId?: string) => {
+    if (!isChannelAllowed(IPC_CHANNELS.CANCEL_EXPORT)) {
+      return Promise.reject(new Error('Channel not allowed'));
+    }
+    return ipcRenderer.invoke(IPC_CHANNELS.CANCEL_EXPORT, { jobId });
+  },
 });
 
 console.log('✅ Preload script loaded successfully');
