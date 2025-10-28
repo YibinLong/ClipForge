@@ -46,22 +46,22 @@
 
 ---
 
-### **Epic 1.3: IPC Infrastructure** ⬜
+### **Epic 1.3: IPC Infrastructure** ✅
 
 **Story:** Set up secure communication between main and renderer processes using context isolation
 
-- ⬜ **Task 1.3.1:** Enable `contextIsolation: true` and `nodeIntegration: false` in BrowserWindow config
-- ⬜ **Task 1.3.2:** Create `src/preload/preload.ts` with contextBridge setup
-- ⬜ **Task 1.3.3:** Define IPC channel names as constants in `src/types/ipc.ts`
-- ⬜ **Task 1.3.4:** Create type definitions for IPC messages in `src/types/ipc.ts`
-- ⬜ **Task 1.3.5:** Expose IPC methods via contextBridge (e.g., `window.electron.invoke()`)
-- ⬜ **Task 1.3.6:** Create IPC handler utilities in `src/main/ipc/` directory
-- ⬜ **Task 1.3.7:** Implement test IPC handler: `test-message` (ping/pong)
-- ⬜ **Task 1.3.8:** Create React hook or utility for calling IPC from renderer
-- ⬜ **Task 1.3.9:** Test IPC call from renderer button → main → back to renderer with response
-- ⬜ **Task 1.3.10:** Add error handling for IPC calls (try-catch in handlers)
+- ✅ **Task 1.3.1:** Enable `contextIsolation: true` and `nodeIntegration: false` in BrowserWindow config
+- ✅ **Task 1.3.2:** Create `src/preload/preload.ts` with contextBridge setup
+- ✅ **Task 1.3.3:** Define IPC channel names as constants in `src/types/ipc.ts`
+- ✅ **Task 1.3.4:** Create type definitions for IPC messages in `src/types/ipc.ts`
+- ✅ **Task 1.3.5:** Expose IPC methods via contextBridge (e.g., `window.electron.invoke()`)
+- ✅ **Task 1.3.6:** Create IPC handler utilities in `src/main/ipc/` directory
+- ✅ **Task 1.3.7:** Implement test IPC handler: `test-message` (ping/pong)
+- ✅ **Task 1.3.8:** Create React hook or utility for calling IPC from renderer
+- ✅ **Task 1.3.9:** Test IPC call from renderer button → main → back to renderer with response
+- ✅ **Task 1.3.10:** Add error handling for IPC calls (try-catch in handlers)
 
-**Acceptance:** Can send message from renderer to main and receive response, contextBridge exposes only intended APIs, TypeScript types prevent invalid IPC calls. ⬜
+**Acceptance:** Can send message from renderer to main and receive response, contextBridge exposes only intended APIs, TypeScript types prevent invalid IPC calls. ✅
 
 ---
 
