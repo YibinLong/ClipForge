@@ -271,25 +271,25 @@
 
 ---
 
-### **Epic 4.2: Split Clips** ⬜
+### **Epic 4.2: Split Clips** ✅
 
 **Story:** Enable splitting clips at playhead position into two separate clips
 
-- ⬜ **Task 4.2.1:** Add "Split" button to timeline toolbar
-- ⬜ **Task 4.2.2:** Enable split button only when playhead is over a clip
-- ⬜ **Task 4.2.3:** Implement `splitClip(clipId, splitTime)` action in timeline store
-- ⬜ **Task 4.2.4:** Find clip at current playhead position
-- ⬜ **Task 4.2.5:** Calculate split point relative to clip start
-- ⬜ **Task 4.2.6:** Create first clip: original start to split point
-- ⬜ **Task 4.2.7:** Create second clip: split point to original end
-- ⬜ **Task 4.2.8:** Preserve trim values in both new clips
-- ⬜ **Task 4.2.9:** Generate unique IDs for new clips
-- ⬜ **Task 4.2.10:** Remove original clip and add two new clips to timeline
-- ⬜ **Task 4.2.11:** Update canvas to render both clips
-- ⬜ **Task 4.2.12:** Test split at various playhead positions
-- ⬜ **Task 4.2.13:** Test split on already-trimmed clip
+- ✅ **Task 4.2.1:** Add "Split" button to timeline toolbar
+- ✅ **Task 4.2.2:** Enable split button only when playhead is over a clip
+- ✅ **Task 4.2.3:** Implement `splitClip(clipId, splitTime)` action in timeline store
+- ✅ **Task 4.2.4:** Find clip at current playhead position
+- ✅ **Task 4.2.5:** Calculate split point relative to clip start
+- ✅ **Task 4.2.6:** Create first clip: original start to split point
+- ✅ **Task 4.2.7:** Create second clip: split point to original end
+- ✅ **Task 4.2.8:** Preserve trim values in both new clips
+- ✅ **Task 4.2.9:** Generate unique IDs for new clips
+- ✅ **Task 4.2.10:** Remove original clip and add two new clips to timeline
+- ✅ **Task 4.2.11:** Update canvas to render both clips
+- ✅ **Task 4.2.12:** Test split at various playhead positions
+- ✅ **Task 4.2.13:** Test split on already-trimmed clip
 
-**Acceptance:** Clicking split button divides clip at playhead into two clips, both clips maintain correct timing and trim values, timeline updates visually. ⬜
+**Acceptance:** Clicking split button divides clip at playhead into two clips, both clips maintain correct timing and trim values, timeline updates visually. ✅
 
 ---
 
