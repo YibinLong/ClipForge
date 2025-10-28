@@ -14,6 +14,7 @@
  */
 
 import { MediaClip } from './media';
+import { TimelineClip } from './timeline';
 
 /**
  * IPC_CHANNELS - All available IPC channel names
@@ -45,6 +46,11 @@ export const IPC_CHANNELS = {
    * Load media library from disk via main process (electron-store)
    */
   LOAD_MEDIA_LIBRARY: 'load-media-library',
+  
+  /**
+   * Start export of the timeline (Epic 5.1 - Track 1 only, single-clip MVP)
+   */
+  START_EXPORT: 'start-export',
   
   // Future channels will be added here as we implement more features:
   // START_RECORDING: 'start-recording',
@@ -124,6 +130,24 @@ export interface LoadMediaLibraryResponse {
   clips: MediaClip[];
 }
 
+// ============================================================================
+// EXPORT - EPIC 5.1 (Entire Timeline, Track 1 only MVP)
+// ============================================================================
+
+export interface StartExportTimelineRequest {
+  timeline: TimelineClip[];
+  media: MediaClip[];
+  trackId: number;
+  suggestedName?: string;
+}
+
+export interface StartExportSuccessResponse {
+  success: true;
+  outputPath: string;
+}
+
+export type StartExportResponse = StartExportSuccessResponse;
+
 /**
  * Error response structure used across all IPC handlers
  * 
@@ -173,7 +197,8 @@ export type IPCResponse =
   | TestMessageResponse 
   | ImportFileResponse
   | SaveMediaLibraryResponse
-  | LoadMediaLibraryResponse;
+  | LoadMediaLibraryResponse
+  | StartExportResponse;
 
 /**
  * Combined response type that includes potential errors
