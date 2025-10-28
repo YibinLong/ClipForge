@@ -13,6 +13,7 @@ import MediaLibrary from './components/MediaLibrary';
 import VideoPlayer from './components/VideoPlayer';
 import Timeline from './components/Timeline';
 import { MediaClip } from '../types/media';
+import { useTimelineStore } from './stores/timelineStore';
 
 // Verify that the Electron API is available
 if (window.electron) {
@@ -165,3 +166,9 @@ root.render(
     <App />
   </React.StrictMode>
 );
+
+// Expose timeline store for DevTools testing in development only
+if (process.env.NODE_ENV !== 'production') {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).timeline = useTimelineStore;
+}
