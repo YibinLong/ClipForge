@@ -1,6 +1,6 @@
 import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerSquirrel } from '@electron-forge/maker-squirrel';
-import { MakerZIP } from '@electron-forge/maker-zip';
+import { MakerDMG } from '@electron-forge/maker-dmg';
 import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerRpm } from '@electron-forge/maker-rpm';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
@@ -18,11 +18,18 @@ const config: ForgeConfig = {
       // Unpack these so binaries remain executable in production
       unpack: '{**/native_modules/**,**/ffmpeg,**/ffprobe,**/*.node}',
     },
+    // Required for macOS identity and future signing/notarization
+    appBundleId: 'com.clipforge.app',
+    // Ensure ffmpeg/ffprobe binaries are present in packaged Resources (basename kept)
+    extraResource: [
+      'node_modules/ffmpeg-static/ffmpeg',
+      'node_modules/ffprobe-static/bin/darwin/arm64/ffprobe',
+    ],
   },
   rebuildConfig: {},
   makers: [
     new MakerSquirrel({}),
-    new MakerZIP({}, ['darwin']),
+    new MakerDMG({}),
     new MakerRpm({}),
     new MakerDeb({}),
   ],
