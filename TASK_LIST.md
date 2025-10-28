@@ -108,23 +108,23 @@
 
 ---
 
-### **Epic 2.3: Video Preview Player** ⬜
+### **Epic 2.3: Video Preview Player** ✅
 
 **Story:** Display imported videos in a preview player with basic playback controls
 
-- ⬜ **Task 2.3.1:** Create `VideoPlayer` component in `src/renderer/components/VideoPlayer.tsx`
-- ⬜ **Task 2.3.2:** Use HTML5 `<video>` element with `controls` attribute
-- ⬜ **Task 2.3.3:** Accept `src` prop for video file path (use `file://` protocol)
-- ⬜ **Task 2.3.4:** Create custom play/pause button overlay (styled with Tailwind)
-- ⬜ **Task 2.3.5:** Add time display showing `currentTime / duration` in MM:SS format
-- ⬜ **Task 2.3.6:** Implement custom progress bar (input range slider)
-- ⬜ **Task 2.3.7:** Sync progress bar with video currentTime
-- ⬜ **Task 2.3.8:** Allow seeking by clicking/dragging progress bar
-- ⬜ **Task 2.3.9:** Display selected clip from media library in VideoPlayer
-- ⬜ **Task 2.3.10:** Handle video load errors gracefully (show error message)
-- ⬜ **Task 2.3.11:** Add volume control slider
+- ✅ **Task 2.3.1:** Create `VideoPlayer` component in `src/renderer/components/VideoPlayer.tsx`
+- ✅ **Task 2.3.2:** Use HTML5 `<video>` element with `controls` attribute
+- ✅ **Task 2.3.3:** Accept `src` prop for video file path (use `file://` protocol)
+- ✅ **Task 2.3.4:** Create custom play/pause button overlay (styled with Tailwind)
+- ✅ **Task 2.3.5:** Add time display showing `currentTime / duration` in MM:SS format
+- ✅ **Task 2.3.6:** Implement custom progress bar (input range slider)
+- ✅ **Task 2.3.7:** Sync progress bar with video currentTime
+- ✅ **Task 2.3.8:** Allow seeking by clicking/dragging progress bar
+- ✅ **Task 2.3.9:** Display selected clip from media library in VideoPlayer
+- ✅ **Task 2.3.10:** Handle video load errors gracefully (show error message)
+- ✅ **Task 2.3.11:** Add volume control slider
 
-**Acceptance:** Clicking a media library clip loads it in preview player, can play/pause, see current time and duration, seek using progress bar. ⬜
+**Acceptance:** Clicking a media library clip loads it in preview player, can play/pause, see current time and duration, seek using progress bar. ✅
 
 ---
 
