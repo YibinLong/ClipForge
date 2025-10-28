@@ -1,5 +1,6 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Stage, Layer, Line, Rect, Text, Group } from 'react-konva';
+import { useTimelineStore } from '../stores/timelineStore';
 
 interface TimelineProps {
   /**
@@ -26,15 +27,17 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
   const MAJOR_TICK_HEIGHT = 14;
   const MINOR_TICK_HEIGHT = 8;
 
-  const [zoomLevel, setZoomLevel] = useState<number>(1);
-  const [currentTimeSec, setCurrentTimeSec] = useState<number>(0);
+  const zoomLevel = useTimelineStore((s) => s.zoomLevel);
+  const playheadPosition = useTimelineStore((s) => s.playheadPosition);
+  const setZoom = useTimelineStore((s) => s.setZoomLevel);
+  const setPlayhead = useTimelineStore((s) => s.setPlayheadPosition);
 
   const pixelsPerSecond = BASE_PX_PER_SEC * zoomLevel;
   const totalSeconds = Math.max(0, Math.ceil(durationSec));
   const roundedTo10 = Math.ceil(totalSeconds / 10) * 10;
   const stageWidth = Math.max(1, Math.ceil(roundedTo10 * pixelsPerSecond));
 
-  const playheadX = Math.max(0, Math.min(stageWidth, currentTimeSec * pixelsPerSecond));
+  const playheadX = Math.max(0, Math.min(stageWidth, playheadPosition * pixelsPerSecond));
 
   // Scroll container ref to preserve playhead screen position during zoom
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -46,7 +49,7 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
   }
 
   const minorTicks = useMemo(() => {
-    const nodes: JSX.Element[] = [];
+    const nodes: React.ReactNode[] = [];
     for (let s = 0; s <= roundedTo10; s += 1) {
       const x = s * pixelsPerSecond;
       nodes.push(
@@ -62,7 +65,7 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
   }, [pixelsPerSecond, roundedTo10]);
 
   const majorTicksAndLabels = useMemo(() => {
-    const nodes: JSX.Element[] = [];
+    const nodes: React.ReactNode[] = [];
     for (let s = 0; s <= roundedTo10; s += 10) {
       const x = s * pixelsPerSecond;
       nodes.push(
@@ -92,16 +95,16 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
     const container = scrollRef.current;
     const viewportWidth = container?.clientWidth ?? 0;
     const oldPixelsPerSecond = pixelsPerSecond; // before change
-    const oldPlayheadX = currentTimeSec * oldPixelsPerSecond;
+    const oldPlayheadX = playheadPosition * oldPixelsPerSecond;
     const oldScrollLeft = container?.scrollLeft ?? 0;
     const playheadViewportX = oldPlayheadX - oldScrollLeft;
 
     const newPixelsPerSecond = BASE_PX_PER_SEC * clamped;
     const newStageWidth = Math.max(1, Math.ceil(roundedTo10 * newPixelsPerSecond));
-    const newPlayheadX = currentTimeSec * newPixelsPerSecond;
+    const newPlayheadX = playheadPosition * newPixelsPerSecond;
     const desiredScrollLeft = Math.max(0, Math.min(Math.max(0, newStageWidth - viewportWidth), newPlayheadX - playheadViewportX));
 
-    setZoomLevel(clamped);
+    setZoom(clamped);
     if (container) {
       // Ensure scroll aligns so playhead stays visually in same screen position
       container.scrollLeft = desiredScrollLeft;
@@ -123,7 +126,7 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold text-gray-800">🧭 Timeline</h2>
           <span className="text-sm text-gray-500">Duration: {formatTime(totalSeconds)}</span>
-          <span className="text-sm text-gray-500">| Current: {currentTimeSec.toFixed(2)}s</span>
+          <span className="text-sm text-gray-500">| Current: {playheadPosition.toFixed(2)}s</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -175,7 +178,7 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                   const x = e.target.x();
                   const time = Math.max(0, Math.min(roundedTo10, x / pixelsPerSecond));
                   const snapped = Math.round(time * 10) / 10; // snap 0.1s
-                  setCurrentTimeSec(snapped);
+                  setPlayhead(snapped);
                 }}
               >
                 {/* Vertical line */}
