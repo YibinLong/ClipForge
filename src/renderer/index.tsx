@@ -190,7 +190,10 @@ const App: React.FC = () => {
             onMediaTimeUpdate={(t) => {
               // Map media time back to absolute timeline time when inside a clip
               if (active.clip) {
-                const abs = active.clip.startTime + Math.max(0, Math.min(active.clip.trimEnd - active.clip.trimStart, t - active.clip.trimStart));
+                // First clamp t to valid trim range, then calculate offset from trimStart
+                const clampedMediaTime = Math.max(active.clip.trimStart, Math.min(active.clip.trimEnd, t));
+                const offsetIntoClip = clampedMediaTime - active.clip.trimStart;
+                const abs = active.clip.startTime + offsetIntoClip;
                 setCurrentTime(abs);
               }
             }}
