@@ -23,9 +23,10 @@
  * - Cumulative imports (each import/drop adds to existing list)
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { isIPCError, ImportFileResponse } from '../../types/ipc';
 import { MediaClip } from '../../types/media';
+import { useMediaStore } from '../stores/mediaStore';
 
 interface MediaLibraryProps {
   onSelectClip?: (clip: MediaClip) => void;
@@ -72,14 +73,25 @@ function formatResolution(width: number, height: number): string {
  * Renders the media library UI with import functionality and rich metadata display
  */
 const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipId = null }) => {
-  // State to track imported video clips with full metadata
-  const [clips, setClips] = useState<MediaClip[]>([]);
+  // Zustand media store bindings
+  const clips = useMediaStore(state => state.clips);
+  const addClips = useMediaStore(state => state.addClips);
+  const removeClip = useMediaStore(state => state.removeClip);
+  const clearAll = useMediaStore(state => state.clearAll);
+  const selectClip = useMediaStore(state => state.selectClip);
+  const initializeFromSaved = useMediaStore(state => state.initializeFromSaved);
+  const storeSelectedClipId = useMediaStore(state => state.selectedClipId);
   
   // State to track drag-over state for visual feedback
   const [isDragOver, setIsDragOver] = useState(false);
   
   // State to track loading state during import
   const [isImporting, setIsImporting] = useState(false);
+
+  // Initialize persisted media library on first mount
+  useEffect(() => {
+    void initializeFromSaved();
+  }, [initializeFromSaved]);
 
   /**
    * Handle "Import Video" button click
@@ -110,10 +122,10 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
       // TypeScript type assertion: response is ImportFileResponse after error check
       const importResponse = response as ImportFileResponse;
 
-      // Add processed clips to state (cumulative)
+      // Add processed clips to store (cumulative)
       if (importResponse.clips.length > 0) {
         console.log(`[MEDIA LIBRARY] Adding ${importResponse.clips.length} clip(s) with metadata`);
-        setClips(prev => [...prev, ...importResponse.clips]);
+        addClips(importResponse.clips);
       } else {
         console.log('[MEDIA LIBRARY] No files selected');
       }
@@ -314,7 +326,7 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
                 Imported Videos ({clips.length})
               </h3>
               <button
-                onClick={() => setClips([])}
+                onClick={() => clearAll()}
                 className="text-sm text-red-600 hover:text-red-700 hover:underline"
               >
                 Clear All
@@ -324,9 +336,12 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
               {clips.map((clip) => (
                 <div
                   key={clip.id}
-                  onClick={() => onSelectClip?.(clip)}
+                  onClick={() => {
+                    selectClip(clip.id);
+                    onSelectClip?.(clip);
+                  }}
                   className={`flex gap-4 p-4 bg-white border rounded-lg hover:bg-gray-50 transition-colors shadow-sm cursor-pointer
-                    ${selectedClipId === clip.id ? 'border-blue-500 ring-2 ring-blue-300' : 'border-gray-200'}
+                    ${(selectedClipId ?? storeSelectedClipId) === clip.id ? 'border-blue-500 ring-2 ring-blue-300' : 'border-gray-200'}
                   `}
                 >
                   {/* Thumbnail */}
@@ -369,7 +384,10 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
                   {/* Remove button */}
                   <div className="flex-shrink-0">
                     <button
-                      onClick={() => setClips(prev => prev.filter(c => c.id !== clip.id))}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeClip(clip.id);
+                      }}
                       className="text-red-500 hover:text-red-700 px-3 py-1 rounded hover:bg-red-50 transition-colors"
                       title="Remove clip"
                     >
