@@ -41,6 +41,7 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
   const addClipToTimeline = useTimelineStore((s) => s.addClipToTimeline);
   const selectedTimelineClipId = useTimelineStore((s) => s.selectedClipId);
   const selectTimelineClip = useTimelineStore((s) => s.selectTimelineClip);
+  const removeClipFromTimeline = useTimelineStore((s) => s.removeClipFromTimeline);
   const updateClip = useTimelineStore((s) => s.updateClip);
   const rippleTrimStart = useTimelineStore((s) => s.rippleTrimStart);
   const rippleTrimEnd = useTimelineStore((s) => s.rippleTrimEnd);
@@ -154,6 +155,23 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
   const onZoomIn = () => {
     adjustZoom(zoomLevel + 1);
   };
+
+  // Shared delete handler used by keyboard and toolbar button
+  const handleDelete = useCallback(() => {
+    if (!selectedTimelineClipId) return;
+    const target = timelineClips.find((c) => c.id === selectedTimelineClipId) || null;
+    const wasPlaying = isPlaying;
+    removeClipFromTimeline(selectedTimelineClipId);
+    selectTimelineClip(null);
+    if (
+      wasPlaying &&
+      target &&
+      playheadPosition >= target.startTime &&
+      playheadPosition < target.endTime
+    ) {
+      pause();
+    }
+  }, [selectedTimelineClipId, timelineClips, isPlaying, removeClipFromTimeline, selectTimelineClip, playheadPosition, pause]);
 
   // Helpers to map screen coords to timeline time/track
   const getDropContext = useCallback((clientX: number, clientY: number) => {
@@ -269,6 +287,15 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
               </button>
             );
           })()}
+          {/* Delete button */}
+          <button
+            onClick={handleDelete}
+            disabled={!selectedTimelineClipId}
+            className={`px-3 py-1 rounded ${selectedTimelineClipId ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-60'}`}
+            title={selectedTimelineClipId ? 'Delete selected clip (Del/Backspace)' : 'Select a clip to delete'}
+          >
+            Delete 🗑
+          </button>
           <button
             onClick={onZoomOut}
             className="px-3 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -291,6 +318,20 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
       <div
         ref={scrollRef}
         className="overflow-x-auto w-full border border-gray-200 rounded-lg bg-gray-50"
+        tabIndex={0}
+        role="region"
+        aria-label="Timeline canvas. Use Delete or Backspace to remove selected clip."
+        onMouseDown={() => {
+          // Ensure the container is focused so it receives keyboard events
+          scrollRef.current?.focus();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Delete' || e.key === 'Backspace') {
+            e.preventDefault();
+            e.stopPropagation();
+            handleDelete();
+          }
+        }}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
