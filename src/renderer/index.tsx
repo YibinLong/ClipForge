@@ -11,6 +11,7 @@ import './index.css';
 import IPCTest from './components/IPCTest';
 import MediaLibrary from './components/MediaLibrary';
 import VideoPlayer from './components/VideoPlayer';
+import Timeline from './components/Timeline';
 import { MediaClip } from '../types/media';
 
 // Verify that the Electron API is available
@@ -106,6 +107,9 @@ const App: React.FC = () => {
             selectedClipId={selectedClip?.id ?? null}
           />
         </div>
+
+        {/* Timeline below the main workspace */}
+        <Timeline durationSec={selectedClip?.duration ?? 120} />
       </div>
     </div>
   );

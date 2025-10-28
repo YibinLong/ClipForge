@@ -153,27 +153,27 @@
 
 ## **PHASE 3: TIMELINE FOUNDATION** ⬜
 
-### **Epic 3.1: Timeline UI (Konva Canvas)** ⬜
+### **Epic 3.1: Timeline UI (Konva Canvas)** ✅
 
 **Story:** Build the visual timeline using Konva.js canvas with time ruler and playhead
 
-- ⬜ **Task 3.1.1:** Create `Timeline` component in `src/renderer/components/Timeline.tsx`
-- ⬜ **Task 3.1.2:** Set up Konva Stage and Layer with react-konva
-- ⬜ **Task 3.1.3:** Define timeline dimensions (width: full viewport, height: 300px)
-- ⬜ **Task 3.1.4:** Draw background rectangle for timeline area
-- ⬜ **Task 3.1.5:** Implement time ruler with tick marks every 10 seconds
-- ⬜ **Task 3.1.6:** Add time labels (00:00, 00:10, 00:20, etc.) above ruler
-- ⬜ **Task 3.1.7:** Calculate ruler scale based on zoom level (pixels per second)
-- ⬜ **Task 3.1.8:** Draw playhead as vertical red line (Konva Line)
-- ⬜ **Task 3.1.9:** Make playhead draggable (Konva draggable property)
-- ⬜ **Task 3.1.10:** Constrain playhead to horizontal axis only (dragBoundFunc)
-- ⬜ **Task 3.1.11:** Create zoom controls (+/- buttons) above timeline
-- ⬜ **Task 3.1.12:** Implement zoom in/out logic (increase/decrease pixelsPerSecond)
-- ⬜ **Task 3.1.13:** Clamp zoom level between 1x and 10x
-- ⬜ **Task 3.1.14:** Re-render timeline when zoom changes
-- ⬜ **Task 3.1.15:** Add horizontal scrollbar for timeline overflow
+- ✅ **Task 3.1.1:** Create `Timeline` component in `src/renderer/components/Timeline.tsx`
+- ✅ **Task 3.1.2:** Set up Konva Stage and Layer with react-konva
+- ✅ **Task 3.1.3:** Define timeline dimensions (width: full viewport, height: 300px)
+- ✅ **Task 3.1.4:** Draw background rectangle for timeline area
+- ✅ **Task 3.1.5:** Implement time ruler with tick marks every 10 seconds
+- ✅ **Task 3.1.6:** Add time labels (00:00, 00:10, 00:20, etc.) above ruler
+- ✅ **Task 3.1.7:** Calculate ruler scale based on zoom level (pixels per second)
+- ✅ **Task 3.1.8:** Draw playhead as vertical red line (Konva Line)
+- ✅ **Task 3.1.9:** Make playhead draggable (Konva draggable property)
+- ✅ **Task 3.1.10:** Constrain playhead to horizontal axis only (dragBoundFunc)
+- ✅ **Task 3.1.11:** Create zoom controls (+/- buttons) above timeline
+- ✅ **Task 3.1.12:** Implement zoom in/out logic (increase/decrease pixelsPerSecond)
+- ✅ **Task 3.1.13:** Clamp zoom level between 1x and 10x
+- ✅ **Task 3.1.14:** Re-render timeline when zoom changes
+- ✅ **Task 3.1.15:** Add horizontal scrollbar for timeline overflow
 
-**Acceptance:** Timeline canvas renders with time ruler, playhead is visible and draggable, zoom controls adjust timeline scale, can scroll horizontally. ⬜
+**Acceptance:** Timeline canvas renders with time ruler, playhead is visible and draggable, zoom controls adjust timeline scale, can scroll horizontally. ✅
 
 ---
 
