@@ -17,4 +17,8 @@ export const mainConfig: Configuration = {
   resolve: {
     extensions: ['.js', '.ts', '.jsx', '.tsx', '.css', '.json'],
   },
+  /**
+   * Target electron-main for proper Node.js API access
+   */
+  target: 'electron-main',
 };
