@@ -13,7 +13,11 @@ import { rendererConfig } from './webpack.renderer.config';
 
 const config: ForgeConfig = {
   packagerConfig: {
-    asar: true,
+    // Package app into asar for smaller size, but unpack native assets/binaries
+    asar: {
+      // Unpack these so binaries remain executable in production
+      unpack: '{**/native_modules/**,**/ffmpeg,**/ffprobe,**/*.node}',
+    },
   },
   rebuildConfig: {},
   makers: [
@@ -26,6 +30,10 @@ const config: ForgeConfig = {
     new AutoUnpackNativesPlugin({}),
     new WebpackPlugin({
       mainConfig,
+      // LAX dev CSP to allow file:// thumbnails and dev tools
+      devContentSecurityPolicy:
+        "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: file:; " +
+        "img-src 'self' data: blob: file:;",
       renderer: {
         config: rendererConfig,
         entryPoints: [
