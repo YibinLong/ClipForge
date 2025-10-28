@@ -420,17 +420,6 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
           </div>
         )}
       </div>
-
-      {/* Info Footer */}
-      <div className="mt-6 text-center text-sm text-gray-500">
-        <p>Supported formats: MP4, MOV, WebM</p>
-        <p className="text-xs mt-1 text-green-600 font-medium">
-          ✅ Epic 2.2: FFmpeg Integration - Complete
-        </p>
-        <p className="text-xs mt-1 text-gray-400">
-          Metadata extraction, thumbnail generation, and rich preview display
-        </p>
-      </div>
     </div>
   );
 };
