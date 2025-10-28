@@ -1,6 +1,6 @@
 import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerSquirrel } from '@electron-forge/maker-squirrel';
-import { MakerZIP } from '@electron-forge/maker-zip';
+import { MakerDMG } from '@electron-forge/maker-dmg';
 import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerRpm } from '@electron-forge/maker-rpm';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
@@ -11,6 +11,11 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { mainConfig } from './webpack.main.config';
 import { rendererConfig } from './webpack.renderer.config';
 
+// Import platform-specific binary paths
+// These will automatically resolve to the correct binary for the build platform
+import ffmpegPath from 'ffmpeg-static';
+import ffprobePath from 'ffprobe-static';
+
 const config: ForgeConfig = {
   packagerConfig: {
     // Package app into asar for smaller size, but unpack native assets/binaries
@@ -18,11 +23,19 @@ const config: ForgeConfig = {
       // Unpack these so binaries remain executable in production
       unpack: '{**/native_modules/**,**/ffmpeg,**/ffprobe,**/*.node}',
     },
+    // Required for macOS identity and future signing/notarization
+    appBundleId: 'com.clipforge.app',
+    // Ensure ffmpeg/ffprobe binaries are present in packaged Resources
+    // These paths are automatically resolved to the correct platform-specific binaries
+    extraResource: [
+      ffmpegPath,
+      ffprobePath,
+    ].filter((path): path is string => path !== null),
   },
   rebuildConfig: {},
   makers: [
     new MakerSquirrel({}),
-    new MakerZIP({}, ['darwin']),
+    new MakerDMG({}),
     new MakerRpm({}),
     new MakerDeb({}),
   ],

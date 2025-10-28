@@ -128,7 +128,8 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
         console.log(`[MEDIA LIBRARY] Adding ${importResponse.clips.length} clip(s) with metadata`);
         addClips(importResponse.clips);
       } else {
-        console.log('[MEDIA LIBRARY] No files selected');
+        console.warn('[MEDIA LIBRARY] Import returned 0 clips. This can mean the dialog was cancelled or FFmpeg failed to process selected files.');
+        console.warn('[MEDIA LIBRARY] If you selected files, please check the Main process logs for [FFMPEG] errors.');
       }
     } catch (error) {
       console.error('[MEDIA LIBRARY] Unexpected error during import:', error);
