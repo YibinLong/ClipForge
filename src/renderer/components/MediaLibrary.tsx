@@ -89,12 +89,23 @@ const MediaLibrary: React.FC = () => {
   /**
    * Handle drag leave event
    * 
-   * Resets visual feedback state
+   * Resets visual feedback state ONLY when actually leaving the drop zone
+   * 
+   * BUG FIX: dragLeave fires when moving between parent and child elements
+   * We check if relatedTarget (where mouse is going) is still inside the drop zone
+   * Only clear the drag state if we're truly leaving the entire drop zone
    */
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragOver(false);
+    
+    // Check if we're moving to a child element or actually leaving
+    const relatedTarget = e.relatedTarget as Node;
+    
+    // If relatedTarget is NOT inside currentTarget, we're leaving the drop zone
+    if (!e.currentTarget.contains(relatedTarget)) {
+      setIsDragOver(false);
+    }
   };
 
   /**
