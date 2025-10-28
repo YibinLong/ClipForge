@@ -206,7 +206,9 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
 
       const clip = state.clips[clipIndex];
       const minTrimEnd = clip.trimStart + MIN_CLIP_DURATION;
-      const mediaCap = typeof mediaDuration === 'number' ? mediaDuration : clip.trimEnd;
+      // When mediaDuration is not provided, allow extending beyond current trimEnd
+      // Use a large upper bound (1 hour) instead of capping at current trimEnd
+      const mediaCap = typeof mediaDuration === 'number' ? mediaDuration : 3600;
       const maxTrimEnd = Math.max(minTrimEnd, mediaCap);
       const desired = clamp(targetTrimEnd, minTrimEnd, maxTrimEnd);
 
