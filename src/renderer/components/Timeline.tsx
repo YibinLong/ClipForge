@@ -425,12 +425,12 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                         (e.evt as any).cancelBubble = true;
                       }}
                       dragBoundFunc={(pos) => {
-                        // VISUAL TRIM: Left handle stays within the visible box
-                        // It can only move right (to trim more off the left), not left
+                        // LEFT TRIM WITH RECOVERY: Handle can extend left to recover trimmed content
                         const localDesiredX = pos.x - absGroupX;
                         
-                        // Minimum: handle stays at left edge (0 in local coordinates)
-                        const localMinX = 0;
+                        // Minimum: can extend left by the amount previously trimmed
+                        // If trimStart = 10s, we can go -10s * pixelsPerSecond to recover that content
+                        const localMinX = -clip.trimStart * pixelsPerSecond;
                         
                         // Maximum: must maintain minimum clip width
                         const localMaxX = width - minPixels;
@@ -442,9 +442,9 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                         if (DEBUG_TRIM && Math.random() < 0.05) {
                           console.log('[TIMELINE][LEFT][dragBound] Constraining handle:', {
                             localDesiredX,
-                            constraints: { localMinX, localMaxX, minPixels, width },
+                            constraints: { localMinX, localMaxX, minPixels, width, trimStart: clip.trimStart },
                             result: { clampedLocalX, clampedAbsX },
-                            note: 'VISUAL TRIM: handle constrained to [0, width-min]',
+                            note: 'LEFT TRIM WITH RECOVERY: can extend left to recover trimmed content',
                           });
                         }
 
@@ -479,13 +479,14 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                         const mediaDuration = media?.duration ?? (clip.trimEnd - clip.trimStart);
                         const handleAbsX = e.target.getAbsolutePosition().x;
                         
-                        // LEFT TRIM: Calculate where the new left edge should be on timeline
+                        // LEFT TRIM WITH RECOVERY: Calculate where the new left edge should be on timeline
                         // The handle's absolute position tells us where the clip should END UP starting
                         const newTimelinePosition = snap(handleAbsX / pixelsPerSecond);
                         
-                        // How much of the source we're cutting from the left
-                        // If handle is at timeline position 10s, and original clip started at 0s,
-                        // we're cutting 10s from the start, so trimStart = original_trimStart + 10
+                        // How much we're cutting/recovering from the left
+                        // Positive: cutting more (handle moved right)
+                        // Negative: recovering content (handle moved left)
+                        // Example: handle at 5s, clip started at 10s → amountCut = -5s (recovery!)
                         const amountCut = newTimelinePosition - clip.startTime;
                         const newTrimStart = clamp(
                           snap(clip.trimStart + amountCut),
@@ -511,7 +512,7 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                               trimBounds: { trimStart: newTrimStart, trimEnd: clip.trimEnd },
                             },
                             handleFinalPos: handleAbsX,
-                            note: 'LEFT TRIM: Right edge stays fixed, calculates based on absolute position',
+                            note: 'LEFT TRIM WITH RECOVERY: Right edge stays fixed, can recover previously trimmed content',
                           });
                         }
 
