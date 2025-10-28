@@ -1,8 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTimelineStore } from '../stores/timelineStore';
 
 interface VideoPlayerProps {
   /** Absolute file URL using file:// scheme, or null when nothing selected */
   src: string | null;
+  /** When provided, external timeline controls playback */
+  externalIsPlaying?: boolean;
+  /** When provided, external timeline controls currentTime in seconds */
+  externalTime?: number | null;
+  /** Reports current media time (seconds within source) back to parent */
+  onMediaTimeUpdate?: (mediaTime: number) => void;
 }
 
 function formatTime(seconds: number): string {
@@ -12,13 +19,15 @@ function formatTime(seconds: number): string {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, externalIsPlaying, externalTime, onMediaTimeUpdate }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [hasError, setHasError] = useState<string | null>(null);
+  const playTimeline = useTimelineStore((s) => s.play);
+  const pauseTimeline = useTimelineStore((s) => s.pause);
 
   // Reset player state when src changes
   useEffect(() => {
@@ -48,7 +57,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
       setCurrentTime(Number.isFinite(video.currentTime) ? video.currentTime : 0);
     };
     const onTimeUpdate = () => {
-      setCurrentTime(Number.isFinite(video.currentTime) ? video.currentTime : 0);
+      const t = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+      setCurrentTime(t);
+      if (onMediaTimeUpdate) onMediaTimeUpdate(t);
     };
     const onEnded = () => {
       setIsPlaying(false);
@@ -69,7 +80,43 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
       video.removeEventListener('ended', onEnded);
       video.removeEventListener('error', onError);
     };
-  }, [src]);
+  }, [src, onMediaTimeUpdate]);
+
+  // Drive playback from externalIsPlaying
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || src == null || hasError) return;
+    const sync = async () => {
+      try {
+        if (externalIsPlaying) {
+          await video.play();
+          setIsPlaying(true);
+        } else {
+          video.pause();
+          setIsPlaying(false);
+        }
+      } catch {
+        // ignore play promise errors
+      }
+    };
+    if (typeof externalIsPlaying === 'boolean') {
+      void sync();
+    }
+  }, [externalIsPlaying, src, hasError]);
+
+  // Seek to externalTime (only when drift is noticeable)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || src == null || hasError) return;
+    if (typeof externalTime !== 'number' || !isFinite(externalTime)) return;
+    const drift = Math.abs((video.currentTime ?? 0) - externalTime);
+    if (drift > 0.2) {
+      try {
+        video.currentTime = Math.max(0, externalTime);
+        setCurrentTime(Math.max(0, externalTime));
+      } catch {}
+    }
+  }, [externalTime, src, hasError]);
 
   const progress = useMemo(() => {
     if (!duration || !isFinite(duration)) return 0;
@@ -79,6 +126,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
   const togglePlay = async () => {
     const video = videoRef.current;
     if (!video || !src || hasError) return;
+    // If external control is present, delegate to timeline store as single source of truth
+    if (typeof externalIsPlaying === 'boolean') {
+      try {
+        if (externalIsPlaying) {
+          pauseTimeline();
+        } else {
+          playTimeline();
+        }
+      } catch {}
+      return;
+    }
+    // Fallback: local control when not externally driven
     try {
       if (isPlaying) {
         video.pause();

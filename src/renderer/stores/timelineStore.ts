@@ -6,6 +6,9 @@ interface TimelineState {
   playheadPosition: number; // seconds
   zoomLevel: number; // 1..10
   selectedClipId: string | null;
+  // Playback state
+  isPlaying: boolean;
+  currentTime: number; // mirrors playheadPosition
 
   addClipToTimeline: (clip: TimelineClip) => void;
   removeClipFromTimeline: (clipId: string) => void;
@@ -13,6 +16,11 @@ interface TimelineState {
   setPlayheadPosition: (time: number) => void;
   setZoomLevel: (level: number) => void;
   selectTimelineClip: (clipId: string | null) => void;
+  // Playback actions
+  play: () => void;
+  pause: () => void;
+  setCurrentTime: (time: number) => void;
+  getTimelineEnd: () => number;
 }
 
 export const useTimelineStore = create<TimelineState>((set, get) => ({
@@ -20,6 +28,8 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
   playheadPosition: 0,
   zoomLevel: 1,
   selectedClipId: null,
+  isPlaying: false,
+  currentTime: 0,
 
   addClipToTimeline: (clip) => {
     set((state) => ({ clips: [...state.clips, clip] }));
@@ -37,7 +47,7 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
 
   setPlayheadPosition: (time) => {
     const clamped = Math.max(0, time);
-    set({ playheadPosition: clamped });
+    set({ playheadPosition: clamped, currentTime: clamped });
   },
 
   setZoomLevel: (level) => {
@@ -46,6 +56,18 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
   },
 
   selectTimelineClip: (clipId) => set({ selectedClipId: clipId }),
+
+  play: () => set({ isPlaying: true }),
+  pause: () => set({ isPlaying: false }),
+  setCurrentTime: (time) => {
+    const clamped = Math.max(0, time);
+    set({ currentTime: clamped, playheadPosition: clamped });
+  },
+  getTimelineEnd: () => {
+    const clips = get().clips;
+    if (!clips.length) return 0;
+    return clips.reduce((max, c) => (c.endTime > max ? c.endTime : max), 0);
+  },
 }));
 
 

@@ -5,7 +5,7 @@
  * It runs in the renderer process (separate from the main Electron process).
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import IPCTest from './components/IPCTest';
@@ -14,6 +14,7 @@ import VideoPlayer from './components/VideoPlayer';
 import Timeline from './components/Timeline';
 import { MediaClip } from '../types/media';
 import { useTimelineStore } from './stores/timelineStore';
+import { useMediaStore } from './stores/mediaStore';
 
 // Verify that the Electron API is available
 if (window.electron) {
@@ -33,6 +34,84 @@ if (window.electron) {
 const App: React.FC = () => {
   const [selectedClip, setSelectedClip] = useState<MediaClip | null>(null);
   const playerSrc = useMemo(() => (selectedClip ? `file://${selectedClip.path}` : null), [selectedClip]);
+
+  // Timeline selectors/actions
+  const isPlaying = useTimelineStore((s) => s.isPlaying);
+  const currentTime = useTimelineStore((s) => s.currentTime);
+  const play = useTimelineStore((s) => s.play);
+  const pause = useTimelineStore((s) => s.pause);
+  const setCurrentTime = useTimelineStore((s) => s.setCurrentTime);
+  const getTimelineEnd = useTimelineStore((s) => s.getTimelineEnd);
+  const timelineClips = useTimelineStore((s) => s.clips);
+  const mediaClips = useMediaStore((s) => s.clips);
+
+  // Active clip computation
+  const active = useMemo(() => {
+    if (!timelineClips.length) return { clip: null as any, media: null as any, mediaTime: 0 };
+    // Prefer track 1, else lowest trackId that contains currentTime
+    const containing = timelineClips
+      .filter((c) => currentTime >= c.startTime && currentTime < c.endTime)
+      .sort((a, b) => a.trackId - b.trackId || a.startTime - b.startTime);
+    const clip = containing[0] ?? null;
+    const media = clip ? mediaClips.find((m) => m.id === clip.mediaId) ?? null : null;
+    let mediaTime = 0;
+    if (clip) {
+      const withinClip = Math.max(0, currentTime - clip.startTime);
+      mediaTime = Math.max(clip.trimStart, Math.min(clip.trimEnd, clip.trimStart + withinClip));
+    }
+    return { clip, media, mediaTime };
+  }, [timelineClips, mediaClips, currentTime]);
+
+  // Playback controller (rAF) — only advances during gaps; inside a clip, let <video> clock drive
+  const rafRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!isPlaying) {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+      return;
+    }
+    let last = performance.now();
+    const step = (now: number) => {
+      const dt = (now - last) / 1000;
+      last = now;
+      const end = getTimelineEnd();
+      // If currently inside a clip, do not manually advance; video onTimeUpdate feeds store
+      const inAnyNow = timelineClips.some((c) => currentTime >= c.startTime && currentTime < c.endTime);
+      if (inAnyNow) {
+        // Still schedule next frame to handle exit conditions
+        rafRef.current = requestAnimationFrame(step);
+        return;
+      }
+      let nextT = currentTime + dt;
+      if (nextT >= end) {
+        setCurrentTime(end);
+        pause();
+        return;
+      }
+      // Gap auto-skip
+      const inAny = timelineClips.some((c) => nextT >= c.startTime && nextT < c.endTime);
+      if (!inAny) {
+        const futureStarts = timelineClips
+          .map((c) => c.startTime)
+          .filter((s) => s > nextT)
+          .sort((a, b) => a - b);
+        if (futureStarts.length) {
+          nextT = futureStarts[0];
+        } else {
+          setCurrentTime(end);
+          pause();
+          return;
+        }
+      }
+      setCurrentTime(nextT);
+      rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    };
+  }, [isPlaying, currentTime, timelineClips, getTimelineEnd, pause, setCurrentTime]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 p-8">
@@ -94,6 +173,8 @@ const App: React.FC = () => {
             />
           </div>
 
+          
+
           {/* Footer */}
           <div className="mt-6 text-center text-sm text-gray-500">
             Epic 1.2: Core Dependencies Installation - Complete
@@ -102,7 +183,21 @@ const App: React.FC = () => {
 
         {/* Main workspace: Video Player (left) and Media Library (right) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          <VideoPlayer src={playerSrc} />
+          <VideoPlayer
+            src={active.media ? `file://${active.media.path}` : null}
+            externalIsPlaying={isPlaying}
+            externalTime={active.clip ? active.mediaTime : null}
+            onMediaTimeUpdate={(t) => {
+              // Map media time back to absolute timeline time when inside a clip
+              if (active.clip) {
+                // First clamp t to valid trim range, then calculate offset from trimStart
+                const clampedMediaTime = Math.max(active.clip.trimStart, Math.min(active.clip.trimEnd, t));
+                const offsetIntoClip = clampedMediaTime - active.clip.trimStart;
+                const abs = active.clip.startTime + offsetIntoClip;
+                setCurrentTime(abs);
+              }
+            }}
+          />
           <MediaLibrary
             onSelectClip={(clip) => setSelectedClip(clip)}
             selectedClipId={selectedClip?.id ?? null}
@@ -110,7 +205,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Timeline below the main workspace */}
-        <Timeline durationSec={selectedClip?.duration ?? 120} />
+        <Timeline durationSec={Math.max(getTimelineEnd(), selectedClip?.duration ?? 120)} />
       </div>
     </div>
   );
