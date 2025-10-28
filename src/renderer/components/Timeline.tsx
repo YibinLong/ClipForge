@@ -32,7 +32,10 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
   const zoomLevel = useTimelineStore((s) => s.zoomLevel);
   const playheadPosition = useTimelineStore((s) => s.playheadPosition);
   const setZoom = useTimelineStore((s) => s.setZoomLevel);
-  const setPlayhead = useTimelineStore((s) => s.setPlayheadPosition);
+  const setPlayhead = useTimelineStore((s) => s.setCurrentTime);
+  const isPlaying = useTimelineStore((s) => s.isPlaying);
+  const play = useTimelineStore((s) => s.play);
+  const pause = useTimelineStore((s) => s.pause);
   const addClipToTimeline = useTimelineStore((s) => s.addClipToTimeline);
   const selectedTimelineClipId = useTimelineStore((s) => s.selectedClipId);
   const selectTimelineClip = useTimelineStore((s) => s.selectTimelineClip);
@@ -41,7 +44,8 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
   const mediaClips = useMediaStore((s) => s.clips);
 
   const pixelsPerSecond = BASE_PX_PER_SEC * zoomLevel;
-  const totalSeconds = Math.max(0, Math.ceil(durationSec));
+  // Force static 2-minute timeline regardless of first clip (per request)
+  const totalSeconds = 120;
   const roundedTo10 = Math.ceil(totalSeconds / 10) * 10;
   const stageWidth = Math.max(1, Math.ceil(roundedTo10 * pixelsPerSecond));
 
@@ -202,6 +206,13 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
           <span className="text-sm text-gray-500">| Current: {playheadPosition.toFixed(2)}s</span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => (isPlaying ? pause() : play())}
+            className={`px-3 py-1 rounded ${isPlaying ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+            title={isPlaying ? 'Pause (timeline)' : 'Play (timeline)'}
+          >
+            {isPlaying ? 'Pause ⏸' : 'Play ▶'}
+          </button>
           <button
             onClick={onZoomOut}
             className="px-3 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
