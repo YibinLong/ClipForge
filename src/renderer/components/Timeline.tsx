@@ -3,8 +3,7 @@ import { Stage, Layer, Line, Rect, Text, Group } from 'react-konva';
 import { useTimelineStore } from '../stores/timelineStore';
 import { useMediaStore } from '../stores/mediaStore';
 import { TimelineClip } from '../../types/timeline';
-import { startExportTimeline } from '../utils/ipc';
-import { isIPCError } from '../../types/ipc';
+import ExportModal from './ExportModal';
 
 interface TimelineProps {
   /**
@@ -54,6 +53,7 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
   const splitClip = useTimelineStore((s) => s.splitClip);
   const timelineClips = useTimelineStore((s) => s.clips);
   const mediaClips = useMediaStore((s) => s.clips);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const pixelsPerSecond = BASE_PX_PER_SEC * zoomLevel;
   // Force static 2-minute timeline regardless of first clip (per request)
@@ -321,26 +321,10 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
             const canExport = timelineClips.length > 0;
             return (
               <button
-                onClick={async () => {
-                  try {
-                    const res = await startExportTimeline({
-                      timeline: timelineClips,
-                      media: mediaClips,
-                      trackId: 1,
-                      suggestedName: undefined,
-                    });
-                    if (isIPCError(res)) {
-                      alert(`Export failed: ${res.error}`);
-                    } else {
-                      alert(`Exported to: ${res.outputPath}`);
-                    }
-                  } catch (e) {
-                    alert(`Export error: ${e instanceof Error ? e.message : String(e)}`);
-                  }
-                }}
+                onClick={() => setExportOpen(true)}
                 disabled={!canExport}
                 className={`px-3 py-1 rounded ${canExport ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-60'}`}
-                title={canExport ? 'Export timeline to MP4 (Track 1 only for MVP)' : 'Add a clip to export'}
+                title={canExport ? 'Export timeline to MP4' : 'Add a clip to export'}
               >
                 Export ⤓
               </button>
@@ -875,6 +859,9 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
           </Stage>
         </div>
       </div>
+
+      {/* Export Modal */}
+      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} />
 
       {/* Footer */}
       <div className="mt-4 text-center text-xs text-gray-500">

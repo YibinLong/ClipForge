@@ -52,6 +52,16 @@ export const IPC_CHANNELS = {
    */
   START_EXPORT: 'start-export',
   
+  /**
+   * Streaming progress events for export jobs
+   */
+  EXPORT_PROGRESS: 'export-progress',
+
+  /**
+   * Cancel an in-flight export job
+   */
+  CANCEL_EXPORT: 'cancel-export',
+  
   // Future channels will be added here as we implement more features:
   // START_RECORDING: 'start-recording',
   // EXPORT_VIDEO: 'export-video',
@@ -139,14 +149,39 @@ export interface StartExportTimelineRequest {
   media: MediaClip[];
   trackId: number;
   suggestedName?: string;
+  /** Target resolution for export. Defaults to 'source' */
+  resolution?: 'source' | '720p' | '1080p';
 }
 
 export interface StartExportSuccessResponse {
   success: true;
   outputPath: string;
+  /** Identifier for the export job (used for progress/cancel) */
+  jobId?: string;
 }
 
 export type StartExportResponse = StartExportSuccessResponse;
+
+// =========================================================================
+// EXPORT PROGRESS & CANCEL (Epics 5.3 & 5.2)
+// =========================================================================
+
+export interface ExportProgressEvent {
+  jobId: string;
+  percent: number; // 0..100
+  currentSeconds: number; // processed
+  etaSeconds?: number;
+  status: 'processing' | 'complete' | 'error' | 'cancelled';
+  errorMessage?: string;
+}
+
+export interface CancelExportRequest {
+  jobId?: string;
+}
+
+export interface CancelExportResponse {
+  success: true;
+}
 
 /**
  * Error response structure used across all IPC handlers
@@ -198,7 +233,8 @@ export type IPCResponse =
   | ImportFileResponse
   | SaveMediaLibraryResponse
   | LoadMediaLibraryResponse
-  | StartExportResponse;
+  | StartExportResponse
+  | CancelExportResponse;
 
 /**
  * Combined response type that includes potential errors

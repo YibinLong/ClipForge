@@ -28,6 +28,8 @@ import {
   LoadMediaLibraryResponse,
   StartExportTimelineRequest,
   StartExportResponse,
+  ExportProgressEvent,
+  CancelExportResponse,
 } from '../../types/ipc';
 import { MediaClip } from '../../types/media';
 
@@ -114,5 +116,18 @@ export async function startExportTimeline(
     IPC_CHANNELS.START_EXPORT,
     req
   ) as Promise<StartExportResponse | IPCErrorResponse>;
+}
+
+export function onExportProgress(
+  cb: (e: ExportProgressEvent) => void
+): () => void {
+  return window.electron.on(IPC_CHANNELS.EXPORT_PROGRESS, (...args: unknown[]) => cb(args[0] as ExportProgressEvent));
+}
+
+export async function cancelExport(jobId?: string): Promise<CancelExportResponse | IPCErrorResponse> {
+  return window.electron.invoke(
+    IPC_CHANNELS.CANCEL_EXPORT,
+    { jobId }
+  ) as Promise<CancelExportResponse | IPCErrorResponse>;
 }
 

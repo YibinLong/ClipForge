@@ -1,15 +1,17 @@
 import { IpcMainInvokeEvent, dialog } from 'electron';
 import * as path from 'path';
-import { exportSingleClip } from '../services/export';
+import { exportSingleClip, exportTimelineWithOverlay, cancelActiveExport } from '../services/export';
 import {
   StartExportTimelineRequest,
   StartExportResponse,
   IPCErrorResponse,
   IPCResult,
+  ExportProgressEvent,
+  IPC_CHANNELS,
 } from '../../types/ipc';
 
 export async function handleStartExport(
-  _event: IpcMainInvokeEvent,
+  event: IpcMainInvokeEvent,
   request: unknown
 ): Promise<IPCResult<StartExportResponse>> {
   if (!request || typeof request !== 'object') {
@@ -20,7 +22,7 @@ export async function handleStartExport(
     return err;
   }
 
-  const { timeline, media, trackId, suggestedName } = request as StartExportTimelineRequest;
+  const { timeline, media, trackId, suggestedName, resolution } = request as StartExportTimelineRequest;
   if (!Array.isArray(timeline) || !Array.isArray(media)) {
     const err: IPCErrorResponse = {
       success: false,
@@ -29,36 +31,7 @@ export async function handleStartExport(
     return err;
   }
 
-  const targetTrackId = typeof trackId === 'number' ? trackId : 1;
-  const clipsOnTrack = timeline.filter((c) => c.trackId === targetTrackId);
-
-  if (clipsOnTrack.length === 0) {
-    const err: IPCErrorResponse = {
-      success: false,
-      error: 'Timeline is empty on the selected track',
-    };
-    return err;
-  }
-
-  if (clipsOnTrack.length > 1) {
-    const err: IPCErrorResponse = {
-      success: false,
-      error: 'Multiple clips on Track 1 are not supported in Epic 5.1. Use Epic 5.2.',
-    };
-    return err;
-  }
-
-  const clip = clipsOnTrack[0];
-  const source = media.find((m) => m.id === clip.mediaId) || null;
-  if (!source) {
-    const err: IPCErrorResponse = {
-      success: false,
-      error: 'Source media not found for selected timeline clip',
-    };
-    return err;
-  }
-
-  const baseName = (suggestedName ? suggestedName : (path.parse(source.filename).name + '-export')).replace(/\.mp4$/i, '');
+  const baseName = (suggestedName ? suggestedName : 'timeline-export').replace(/\.mp4$/i, '');
 
   const saveRes = await dialog.showSaveDialog({
     title: 'Export MP4',
@@ -74,11 +47,77 @@ export async function handleStartExport(
     return err;
   }
 
+  const jobId = `export-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
   try {
-    await exportSingleClip(source.path, clip.trimStart, clip.trimEnd, saveRes.filePath);
+    const totalDuration = timeline
+      .filter((c) => (typeof trackId === 'number' ? c.trackId === trackId : c.trackId === 1))
+      .reduce((acc, c) => acc + Math.max(0, (c.trimEnd || 0) - (c.trimStart || 0)), 0);
+
+    await exportTimelineWithOverlay(
+      {
+        timeline,
+        media,
+        resolution: resolution ?? 'source',
+        outputPath: saveRes.filePath,
+      },
+      {
+        onStart: () => {
+          const ev: ExportProgressEvent = {
+            jobId,
+            percent: 0,
+            currentSeconds: 0,
+            status: 'processing',
+          };
+          event.sender.send(IPC_CHANNELS.EXPORT_PROGRESS, ev);
+        },
+        onProgress: (seconds) => {
+          const percent = totalDuration > 0 ? Math.min(100, (seconds / totalDuration) * 100) : 0;
+          const remaining = totalDuration > 0 ? Math.max(0, totalDuration - seconds) : undefined;
+          const ev: ExportProgressEvent = {
+            jobId,
+            percent,
+            currentSeconds: seconds,
+            etaSeconds: remaining,
+            status: 'processing',
+          };
+          event.sender.send(IPC_CHANNELS.EXPORT_PROGRESS, ev);
+        },
+        onEnd: () => {
+          const ev: ExportProgressEvent = {
+            jobId,
+            percent: 100,
+            currentSeconds: totalDuration,
+            status: 'complete',
+          };
+          event.sender.send(IPC_CHANNELS.EXPORT_PROGRESS, ev);
+        },
+        onError: (err) => {
+          const ev: ExportProgressEvent = {
+            jobId,
+            percent: 0,
+            currentSeconds: 0,
+            status: 'error',
+            errorMessage: err.message,
+          };
+          event.sender.send(IPC_CHANNELS.EXPORT_PROGRESS, ev);
+        },
+        onCancel: () => {
+          const ev: ExportProgressEvent = {
+            jobId,
+            percent: 0,
+            currentSeconds: 0,
+            status: 'cancelled',
+          };
+          event.sender.send(IPC_CHANNELS.EXPORT_PROGRESS, ev);
+        },
+      }
+    );
+
     const ok: StartExportResponse = {
       success: true,
       outputPath: saveRes.filePath,
+      jobId,
     };
     return ok;
   } catch (e) {
@@ -89,6 +128,11 @@ export async function handleStartExport(
     };
     return err;
   }
+}
+
+export async function handleCancelExport(): Promise<{ success: true }> {
+  cancelActiveExport();
+  return { success: true };
 }
 
 
