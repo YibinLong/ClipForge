@@ -5,11 +5,13 @@
  * It runs in the renderer process (separate from the main Electron process).
  */
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import IPCTest from './components/IPCTest';
 import MediaLibrary from './components/MediaLibrary';
+import VideoPlayer from './components/VideoPlayer';
+import { MediaClip } from '../types/media';
 
 // Verify that the Electron API is available
 if (window.electron) {
@@ -27,6 +29,9 @@ if (window.electron) {
  * 3. All dependencies are loaded correctly
  */
 const App: React.FC = () => {
+  const [selectedClip, setSelectedClip] = useState<MediaClip | null>(null);
+  const playerSrc = useMemo(() => (selectedClip ? `file://${selectedClip.path}` : null), [selectedClip]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 p-8">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -93,11 +98,14 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* IPC Test Component */}
-        <IPCTest />
-
-        {/* Media Library Component */}
-        <MediaLibrary />
+        {/* Main workspace: Video Player (left) and Media Library (right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <VideoPlayer src={playerSrc} />
+          <MediaLibrary
+            onSelectClip={(clip) => setSelectedClip(clip)}
+            selectedClipId={selectedClip?.id ?? null}
+          />
+        </div>
       </div>
     </div>
   );

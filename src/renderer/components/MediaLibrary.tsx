@@ -27,6 +27,11 @@ import React, { useState } from 'react';
 import { isIPCError, ImportFileResponse } from '../../types/ipc';
 import { MediaClip } from '../../types/media';
 
+interface MediaLibraryProps {
+  onSelectClip?: (clip: MediaClip) => void;
+  selectedClipId?: string | null;
+}
+
 /**
  * Format duration from seconds to MM:SS format
  * 
@@ -66,7 +71,7 @@ function formatResolution(width: number, height: number): string {
  * 
  * Renders the media library UI with import functionality and rich metadata display
  */
-const MediaLibrary: React.FC = () => {
+const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipId = null }) => {
   // State to track imported video clips with full metadata
   const [clips, setClips] = useState<MediaClip[]>([]);
   
@@ -319,7 +324,10 @@ const MediaLibrary: React.FC = () => {
               {clips.map((clip) => (
                 <div
                   key={clip.id}
-                  className="flex gap-4 p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                  onClick={() => onSelectClip?.(clip)}
+                  className={`flex gap-4 p-4 bg-white border rounded-lg hover:bg-gray-50 transition-colors shadow-sm cursor-pointer
+                    ${selectedClipId === clip.id ? 'border-blue-500 ring-2 ring-blue-300' : 'border-gray-200'}
+                  `}
                 >
                   {/* Thumbnail */}
                   <div className="flex-shrink-0">
