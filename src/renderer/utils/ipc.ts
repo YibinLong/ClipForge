@@ -26,6 +26,8 @@ import {
   SaveMediaLibraryRequest,
   SaveMediaLibraryResponse,
   LoadMediaLibraryResponse,
+  StartExportTimelineRequest,
+  StartExportResponse,
 } from '../../types/ipc';
 import { MediaClip } from '../../types/media';
 
@@ -99,5 +101,18 @@ export async function loadMediaLibrary(): Promise<MediaClip[] | IPCErrorResponse
 
   if (isIPCError(res)) return res;
   return res.clips;
+}
+
+// ============================================================================
+// Export helpers (Epic 5.1)
+// ============================================================================
+
+export async function startExportTimeline(
+  req: StartExportTimelineRequest
+): Promise<StartExportResponse | IPCErrorResponse> {
+  return window.electron.invoke(
+    IPC_CHANNELS.START_EXPORT,
+    req
+  ) as Promise<StartExportResponse | IPCErrorResponse>;
 }
 
