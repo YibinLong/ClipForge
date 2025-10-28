@@ -223,27 +223,27 @@
 
 ---
 
-### **Epic 3.4: Timeline Playback Sync** ⬜
+### **Epic 3.4: Timeline Playback Sync** ✅
 
 **Story:** Synchronize timeline playhead with video preview player during playback
 
-- ⬜ **Task 3.4.1:** Create playback state in timeline store: `{ isPlaying: boolean, currentTime: number }`
-- ⬜ **Task 3.4.2:** Implement `play()` and `pause()` actions in timeline store
-- ⬜ **Task 3.4.3:** Add play/pause button to main UI (space bar icon)
-- ⬜ **Task 3.4.4:** Connect play/pause button to timeline store actions
-- ⬜ **Task 3.4.5:** Update playhead position on each animation frame during playback
-- ⬜ **Task 3.4.6:** Use `requestAnimationFrame()` loop to increment currentTime
-- ⬜ **Task 3.4.7:** Determine which clip is at current playhead position
-- ⬜ **Task 3.4.8:** Update VideoPlayer src to active clip at playhead
-- ⬜ **Task 3.4.9:** Sync video player's currentTime with playhead position within clip
-- ⬜ **Task 3.4.10:** Play video when playhead enters clip boundaries
-- ⬜ **Task 3.4.11:** Pause video when playhead exits clip
-- ⬜ **Task 3.4.12:** Implement scrubbing: drag playhead to seek video
-- ⬜ **Task 3.4.13:** Update video player currentTime when playhead manually moved
-- ⬜ **Task 3.4.14:** Stop playback automatically at timeline end
-- ⬜ **Task 3.4.15:** Handle gaps between clips (pause or show black frame)
+- ✅ **Task 3.4.1:** Create playback state in timeline store: `{ isPlaying: boolean, currentTime: number }`
+- ✅ **Task 3.4.2:** Implement `play()` and `pause()` actions in timeline store
+- ✅ **Task 3.4.3:** Add play/pause button to main UI (space bar icon)
+- ✅ **Task 3.4.4:** Connect play/pause button to timeline store actions
+- ✅ **Task 3.4.5:** Update playhead position on each animation frame during playback
+- ✅ **Task 3.4.6:** Use `requestAnimationFrame()` loop to increment currentTime
+- ✅ **Task 3.4.7:** Determine which clip is at current playhead position
+- ✅ **Task 3.4.8:** Update VideoPlayer src to active clip at playhead
+- ✅ **Task 3.4.9:** Sync video player's currentTime with playhead position within clip
+- ✅ **Task 3.4.10:** Play video when playhead enters clip boundaries
+- ✅ **Task 3.4.11:** Pause video when playhead exits clip
+- ✅ **Task 3.4.12:** Implement scrubbing: drag playhead to seek video
+- ✅ **Task 3.4.13:** Update video player currentTime when playhead manually moved
+- ✅ **Task 3.4.14:** Stop playback automatically at timeline end
+- ✅ **Task 3.4.15:** Handle gaps between clips (pause or show black frame)
 
-**Acceptance:** Pressing play advances playhead smoothly, video preview plays in sync with playhead position, scrubbing playhead seeks video, playback stops at end. ⬜
+**Acceptance:** Pressing play advances playhead smoothly, video preview plays in sync with playhead position, scrubbing playhead seeks video, playback stops at end. ✅
 
 ---
 
