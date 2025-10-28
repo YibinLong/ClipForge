@@ -337,6 +337,24 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
               {clips.map((clip) => (
                 <div
                   key={clip.id}
+                  draggable
+                  onDragStart={(e) => {
+                    try {
+                      const payload = {
+                        mediaId: clip.id,
+                        duration: clip.duration,
+                        filename: clip.filename,
+                      };
+                      e.dataTransfer.setData('application/clipforge-media', JSON.stringify(payload));
+                      // Optional: nicer drag image using the thumbnail if available
+                      const img = (e.currentTarget as HTMLDivElement).querySelector('img');
+                      if (img) {
+                        e.dataTransfer.setDragImage(img, 16, 16);
+                      }
+                    } catch (err) {
+                      console.warn('[MEDIA LIBRARY] Failed to set drag payload', err);
+                    }
+                  }}
                   onClick={() => {
                     selectClip(clip.id);
                     onSelectClip?.(clip);

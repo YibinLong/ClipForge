@@ -199,27 +199,27 @@
 
 ---
 
-### **Epic 3.3: Drag & Drop to Timeline** ⬜
+### **Epic 3.3: Drag & Drop to Timeline** ✅
 
 **Story:** Enable dragging clips from media library onto timeline tracks
 
-- ⬜ **Task 3.3.1:** Make media library clip items draggable (HTML5 drag API)
-- ⬜ **Task 3.3.2:** Set draggable data with clip ID and metadata
-- ⬜ **Task 3.3.3:** Add drop zone to timeline canvas area
-- ⬜ **Task 3.3.4:** Handle `drop` event on timeline to get clip data
-- ⬜ **Task 3.3.5:** Calculate drop position (time) based on X coordinate and zoom
-- ⬜ **Task 3.3.6:** Create TimelineClip object with startTime, endTime, trackId
-- ⬜ **Task 3.3.7:** Add clip to timeline store via `addClipToTimeline()`
-- ⬜ **Task 3.3.8:** Render timeline clips as colored rectangles on Konva canvas
-- ⬜ **Task 3.3.9:** Calculate clip width based on duration and zoom level
-- ⬜ **Task 3.3.10:** Display clip name/label inside rectangle
-- ⬜ **Task 3.3.11:** Implement click to select clip (highlight with border)
-- ⬜ **Task 3.3.12:** Update selectedClipId in store on click
-- ⬜ **Task 3.3.13:** Make timeline clips draggable on canvas (reposition)
-- ⬜ **Task 3.3.14:** Update clip startTime/endTime when repositioned
-- ⬜ **Task 3.3.15:** Add visual feedback (color change) for selected clip
+- ✅ **Task 3.3.1:** Make media library clip items draggable (HTML5 drag API)
+- ✅ **Task 3.3.2:** Set draggable data with clip ID and metadata
+- ✅ **Task 3.3.3:** Add drop zone to timeline canvas area
+- ✅ **Task 3.3.4:** Handle `drop` event on timeline to get clip data
+- ✅ **Task 3.3.5:** Calculate drop position (time) based on X coordinate and zoom
+- ✅ **Task 3.3.6:** Create TimelineClip object with startTime, endTime, trackId
+- ✅ **Task 3.3.7:** Add clip to timeline store via `addClipToTimeline()`
+- ✅ **Task 3.3.8:** Render timeline clips as colored rectangles on Konva canvas
+- ✅ **Task 3.3.9:** Calculate clip width based on duration and zoom level
+- ✅ **Task 3.3.10:** Display clip name/label inside rectangle
+- ✅ **Task 3.3.11:** Implement click to select clip (highlight with border)
+- ✅ **Task 3.3.12:** Update selectedClipId in store on click
+- ✅ **Task 3.3.13:** Make timeline clips draggable on canvas (reposition)
+- ✅ **Task 3.3.14:** Update clip startTime/endTime when repositioned
+- ✅ **Task 3.3.15:** Add visual feedback (color change) for selected clip
 
-**Acceptance:** Can drag clip from media library onto timeline, clip appears as rectangle at drop position, can select clip by clicking, can reposition clips on timeline. ⬜
+**Acceptance:** Can drag clip from media library onto timeline, clip appears as rectangle at drop position, can select clip by clicking, can reposition clips on timeline. ✅
 
 ---
 
