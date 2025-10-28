@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useCallback } from 'react';
+import React, { useMemo, useRef, useCallback, useState } from 'react';
 import { Stage, Layer, Line, Rect, Text, Group } from 'react-konva';
 import { useTimelineStore } from '../stores/timelineStore';
 import { useMediaStore } from '../stores/mediaStore';
@@ -28,6 +28,8 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
   const RULER_HEIGHT = 30;
   const MAJOR_TICK_HEIGHT = 14;
   const MINOR_TICK_HEIGHT = 8;
+  const HANDLE_W = 8;
+  const DEBUG_TRIM = true;
 
   const zoomLevel = useTimelineStore((s) => s.zoomLevel);
   const playheadPosition = useTimelineStore((s) => s.playheadPosition);
@@ -40,6 +42,8 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
   const selectedTimelineClipId = useTimelineStore((s) => s.selectedClipId);
   const selectTimelineClip = useTimelineStore((s) => s.selectTimelineClip);
   const updateClip = useTimelineStore((s) => s.updateClip);
+  const rippleTrimStart = useTimelineStore((s) => s.rippleTrimStart);
+  const rippleTrimEnd = useTimelineStore((s) => s.rippleTrimEnd);
   const timelineClips = useTimelineStore((s) => s.clips);
   const mediaClips = useMediaStore((s) => s.clips);
 
@@ -54,6 +58,24 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
   // Scroll container ref to preserve playhead screen position during zoom
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const containerRef = scrollRef; // alias for clarity below
+
+  // Local drag state for trim handles to render live tooltips & bounds
+  const [activeTrim, setActiveTrim] = useState<
+    | null
+    | {
+        clipId: string;
+        side: 'left' | 'right';
+        proposedStartTime?: number; // absolute time in seconds
+        proposedEndTime?: number; // absolute time in seconds
+        proposedTrimStart?: number; // within-source seconds
+        proposedTrimEnd?: number; // within-source seconds
+        absX: number; // absolute x in pixels for tooltip placement
+        absY: number; // absolute y (top of clip group) in pixels
+      }
+  >(null);
+
+  // While a trim handle is being dragged, we suppress group dragging
+  const isTrimmingRef = useRef(false);
 
   function formatTime(seconds: number): string {
     const mins = Math.floor(seconds / 60);
@@ -181,7 +203,19 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
     if (!ctx) return;
 
     const duration = Math.max(0, payload.duration ?? 0);
-    const startTime = ctx.time;
+    // Snap-to-start: if track is empty, snap to 0; otherwise snap to end of rightmost clip
+    const existingOnTrack = timelineClips.filter((c) => c.trackId === ctx.trackId);
+    
+    let startTime: number;
+    if (existingOnTrack.length === 0) {
+      // Track is empty: snap to timeline start (0)
+      startTime = 0;
+    } else {
+      // Track has clips: snap to the end of the rightmost clip
+      const rightmostClip = existingOnTrack.reduce((max, c) => c.endTime > max.endTime ? c : max);
+      startTime = rightmostClip.endTime;
+    }
+    
     const endTime = Math.min(roundedTo10, startTime + duration);
 
     const newClip: TimelineClip = {
@@ -256,34 +290,81 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
 
               {/* Timeline Clips */}
               {timelineClips.map((clip) => {
+                // VISUAL TRIM: Only show the trimmed (visible) portion of the clip
+                // Position: where the clip starts on the timeline
                 const x = clip.startTime * pixelsPerSecond;
-                const width = Math.max(1, (clip.endTime - clip.startTime) * pixelsPerSecond);
+                // Width: based on trimmed duration (what the user sees)
+                const trimmedDuration = clip.trimEnd - clip.trimStart;
+                const width = Math.max(1, trimmedDuration * pixelsPerSecond);
+                
                 const trackAreaTop = RULER_HEIGHT + 10;
                 const trackHeight = 100;
                 const y = clip.trackId === 2 ? trackAreaTop + trackHeight : trackAreaTop;
                 const media = mediaClips.find((m) => m.id === clip.mediaId);
                 const label = media?.filename ?? clip.mediaId;
                 const isSelected = selectedTimelineClipId === clip.id;
+                
+                // DEBUG: Log clip visual calculation when selected (only once per render)
+                if (DEBUG_TRIM && isSelected && Math.random() < 0.1) {
+                  console.log('[TIMELINE][RENDER] Clip visual calculation:', {
+                    clipId: clip.id,
+                    timelineBounds: { start: clip.startTime, end: clip.endTime, duration: clip.endTime - clip.startTime },
+                    trimBounds: { trimStart: clip.trimStart, trimEnd: clip.trimEnd, trimmedDuration },
+                    visualRepresentation: { x, width, pixelsPerSecond },
+                    note: 'VISUAL TRIM: width = (trimEnd - trimStart) * pixelsPerSecond (only showing trimmed portion)',
+                  });
+                }
                 const fill = clip.trackId === 1 ? '#bfdbfe' : '#fde68a'; // blue-200 / amber-200
                 const stroke = isSelected ? '#2563eb' : '#9ca3af'; // blue-600 or gray-400
+                const minStep = 0.1; // seconds
+                const minPixels = minStep * pixelsPerSecond;
+                const absGroupX = x; // group absolute X in pixels
+                const absGroupY = y; // group absolute Y in pixels
 
+                const snap = (t: number) => Math.round(t * 10) / 10;
+                const clamp = (val: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, val));
+
+                const groupDraggable = !(activeTrim && activeTrim.clipId === clip.id) && !isTrimmingRef.current;
                 return (
                   <Group
                     key={clip.id}
                     x={x}
                     y={y}
-                    draggable
+                    draggable={groupDraggable}
                     dragBoundFunc={(pos) => {
                       const clampedX = Math.max(0, Math.min(stageWidth - width, pos.x));
                       return { x: clampedX, y };
                     }}
                     onClick={() => selectTimelineClip(clip.id)}
+                    onDragStart={(e) => {
+                      if (isTrimmingRef.current) {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (e.evt as any).cancelBubble = true;
+                      }
+                    }}
                     onDragEnd={(e) => {
+                      if (isTrimmingRef.current) {
+                        // ignore group drag end while trimming
+                        return;
+                      }
                       const newX = e.target.x();
-                      const newStart = Math.round((newX / pixelsPerSecond) * 10) / 10;
+                      let newStart = Math.round((newX / pixelsPerSecond) * 10) / 10;
                       const durationSec = clip.endTime - clip.startTime;
-                      const newEnd = Math.min(roundedTo10, newStart + durationSec);
-                      updateClip(clip.id, { startTime: newStart, endTime: newEnd });
+                      
+                      // snap-to-previous/next edges on same track within epsilon
+                      const EPS = 0.05; // 50ms tolerance
+                      const sameTrack = timelineClips.filter(c => c.trackId === clip.trackId && c.id !== clip.id);
+                      const neighborEdges = sameTrack.flatMap(c => [c.startTime, c.endTime]);
+
+                      const nearestEdge = neighborEdges.reduce<{edge:number, d:number} | null>((best, edge) => {
+                        const d = Math.abs(edge - newStart);
+                        if (d <= EPS && (!best || d < best.d)) return { edge, d };
+                        return best;
+                      }, null);
+
+                      const snappedStart = nearestEdge ? nearestEdge.edge : newStart;
+                      const snappedEnd = Math.min(roundedTo10, snappedStart + durationSec);
+                      updateClip(clip.id, { startTime: snappedStart, endTime: snappedEnd });
                     }}
                   >
                     <Rect
@@ -306,6 +387,321 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                       fontSize={12}
                       fill="#374151"
                     />
+
+                    {/* LEFT Trim Handle - FIXED: Calculates delta from initial position (0) */}
+                    <Rect
+                      x={0}
+                      y={0}
+                      width={HANDLE_W}
+                      height={trackHeight - 10}
+                      fill={isSelected ? '#3b82f6' : '#6b7280'}
+                      opacity={0.8}
+                      draggable
+                      onDragStart={(e) => {
+                        isTrimmingRef.current = true;
+                        const handleAbsX = e.target.getAbsolutePosition().x;
+                        if (DEBUG_TRIM) {
+                          console.log('[TRIM][LEFT][START]', {
+                            clipId: clip.id,
+                            clipBounds: { start: clip.startTime, end: clip.endTime },
+                            trimBounds: { trimStart: clip.trimStart, trimEnd: clip.trimEnd },
+                            handleStartPos: handleAbsX,
+                            mediaDuration: media?.duration,
+                          });
+                        }
+                        setActiveTrim({
+                          clipId: clip.id,
+                          side: 'left',
+                          proposedStartTime: clip.startTime,
+                          proposedTrimStart: clip.trimStart,
+                          absX: handleAbsX,
+                          absY: absGroupY,
+                        });
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (e.evt as any).cancelBubble = true;
+                      }}
+                      onMouseDown={(e) => {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (e.evt as any).cancelBubble = true;
+                      }}
+                      dragBoundFunc={(pos) => {
+                        // VISUAL TRIM: Left handle stays within the visible box
+                        // It can only move right (to trim more off the left), not left
+                        const localDesiredX = pos.x - absGroupX;
+                        
+                        // Minimum: handle stays at left edge (0 in local coordinates)
+                        const localMinX = 0;
+                        
+                        // Maximum: must maintain minimum clip width
+                        const localMaxX = width - minPixels;
+                        
+                        const clampedLocalX = Math.max(localMinX, Math.min(localMaxX, localDesiredX));
+                        const clampedAbsX = absGroupX + clampedLocalX;
+                        
+                        // DEBUG: Occasionally log constraints (throttled by random to avoid spam)
+                        if (DEBUG_TRIM && Math.random() < 0.05) {
+                          console.log('[TIMELINE][LEFT][dragBound] Constraining handle:', {
+                            localDesiredX,
+                            constraints: { localMinX, localMaxX, minPixels, width },
+                            result: { clampedLocalX, clampedAbsX },
+                            note: 'VISUAL TRIM: handle constrained to [0, width-min]',
+                          });
+                        }
+
+                        return { x: clampedAbsX, y: absGroupY };
+                      }}
+                      onDragMove={(e) => {
+                        const mediaDuration = media?.duration ?? (clip.trimEnd - clip.trimStart);
+                        const handleAbsX = e.target.getAbsolutePosition().x;
+
+                        // LEFT TRIM: Calculate based on absolute timeline position
+                        const newTimelinePosition = snap(handleAbsX / pixelsPerSecond);
+                        const amountCut = newTimelinePosition - clip.startTime;
+                        
+                        const proposedTrimStart = clamp(
+                          snap(clip.trimStart + amountCut),
+                          0,
+                          Math.max(clip.trimStart, clip.trimEnd - minStep) // can't go past trimEnd
+                        );
+
+                        setActiveTrim({
+                          clipId: clip.id,
+                          side: 'left',
+                          proposedStartTime: newTimelinePosition, // Where the clip will start on timeline
+                          proposedTrimStart,
+                          absX: handleAbsX,
+                          absY: absGroupY,
+                        });
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (e.evt as any).cancelBubble = true;
+                      }}
+                      onDragEnd={(e) => {
+                        const mediaDuration = media?.duration ?? (clip.trimEnd - clip.trimStart);
+                        const handleAbsX = e.target.getAbsolutePosition().x;
+                        
+                        // LEFT TRIM: Calculate where the new left edge should be on timeline
+                        // The handle's absolute position tells us where the clip should END UP starting
+                        const newTimelinePosition = snap(handleAbsX / pixelsPerSecond);
+                        
+                        // How much of the source we're cutting from the left
+                        // If handle is at timeline position 10s, and original clip started at 0s,
+                        // we're cutting 10s from the start, so trimStart = original_trimStart + 10
+                        const amountCut = newTimelinePosition - clip.startTime;
+                        const newTrimStart = clamp(
+                          snap(clip.trimStart + amountCut),
+                          0,
+                          Math.max(0, clip.trimEnd - minStep) // can't trim past the end
+                        );
+
+                        if (DEBUG_TRIM) {
+                          console.log('[TRIM][LEFT][END]', {
+                            clipId: clip.id,
+                            before: {
+                              clipBounds: { start: clip.startTime, end: clip.endTime },
+                              trimBounds: { trimStart: clip.trimStart, trimEnd: clip.trimEnd },
+                            },
+                            calculation: {
+                              handleAbsX,
+                              newTimelinePosition,
+                              amountCut,
+                              newTrimStart,
+                            },
+                            requested: {
+                              clipBounds: { start: 'will be recalculated', end: clip.endTime },
+                              trimBounds: { trimStart: newTrimStart, trimEnd: clip.trimEnd },
+                            },
+                            handleFinalPos: handleAbsX,
+                            note: 'LEFT TRIM: Right edge stays fixed, calculates based on absolute position',
+                          });
+                        }
+
+                        rippleTrimStart(clip.id, newTrimStart, media?.duration ?? null);
+                        
+                        // CRITICAL: Reset handle position to 0 (left edge of clip)
+                        // After the store updates, the Group will move to the new startTime position
+                        // The handle needs to stay at the left edge (x=0 in local coordinates)
+                        e.target.x(0);
+                        e.target.y(0);
+
+                        setActiveTrim(null);
+                        
+                        // Delay clearing trim flag to prevent Group's onDragEnd from firing
+                        // and incorrectly repositioning the clip
+                        setTimeout(() => {
+                          isTrimmingRef.current = false;
+                        }, 100);
+
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (e.evt as any).cancelBubble = true;
+                      }}
+                    />
+
+                    {/* RIGHT Trim Handle */}
+                    <Rect
+                      x={Math.max(0, width - HANDLE_W)}
+                      y={0}
+                      width={HANDLE_W}
+                      height={trackHeight - 10}
+                      fill={isSelected ? '#1d4ed8' : '#4b5563'}
+                      opacity={0.9}
+                      draggable
+                      onDragStart={(e) => {
+                        isTrimmingRef.current = true;
+                        const handleLeftAbsX = e.target.getAbsolutePosition().x;
+                        const rightEdgeAbsX = handleLeftAbsX + HANDLE_W;
+                        if (DEBUG_TRIM) {
+                          console.log('[TRIM][RIGHT][START]', {
+                            clipId: clip.id,
+                            clipBounds: { start: clip.startTime, end: clip.endTime },
+                            trimBounds: { trimStart: clip.trimStart, trimEnd: clip.trimEnd },
+                            handleStartPos: rightEdgeAbsX,
+                            mediaDuration: media?.duration,
+                          });
+                        }
+                        setActiveTrim({
+                          clipId: clip.id,
+                          side: 'right',
+                          proposedEndTime: snap(rightEdgeAbsX / pixelsPerSecond),
+                          proposedTrimEnd: clip.trimEnd,
+                          absX: rightEdgeAbsX,
+                          absY: absGroupY,
+                        });
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (e.evt as any).cancelBubble = true;
+                      }}
+                      onMouseDown={(e) => {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (e.evt as any).cancelBubble = true;
+                      }}
+                      dragBoundFunc={(pos) => {
+                        const groupLeftAbs = absGroupX;
+                        // VISUAL TRIM: Right handle stays within visible box
+                        // Minimum: must maintain minimum clip width from left edge
+                        const minAbsX = groupLeftAbs + minPixels - HANDLE_W; // account for handle width
+                        
+                        // Maximum: can't extend beyond available source media
+                        const mediaDuration = media?.duration ?? (clip.trimEnd - clip.trimStart);
+                        const maxPossibleTrimEnd = mediaDuration; // can't go past media end
+                        const maxWidth = (maxPossibleTrimEnd - clip.trimStart) * pixelsPerSecond;
+                        const maxAbsX = groupLeftAbs + maxWidth - HANDLE_W;
+                        
+                        const clampedAbsX = Math.max(minAbsX, Math.min(maxAbsX, pos.x));
+                        
+                        // DEBUG: Occasionally log constraints (throttled by random to avoid spam)
+                        if (DEBUG_TRIM && Math.random() < 0.05) {
+                          console.log('[TIMELINE][RIGHT][dragBound] Constraining handle:', {
+                            desiredAbsX: pos.x,
+                            constraints: { minAbsX, maxAbsX, maxPossibleTrimEnd, HANDLE_W },
+                            result: { clampedAbsX },
+                            note: 'VISUAL TRIM: handle moves within available source duration',
+                          });
+                        }
+                        
+                        return { x: clampedAbsX, y: absGroupY };
+                      }}
+                      onDragMove={(e) => {
+                        const mediaDuration = media?.duration ?? (clip.trimEnd - clip.trimStart);
+                        const handleLeftAbsX = e.target.getAbsolutePosition().x;
+                        const rightEdgeAbsX = handleLeftAbsX + HANDLE_W;
+                        
+                        // VISUAL TRIM: Right edge position determines trimEnd
+                        const localRightEdgeX = rightEdgeAbsX - absGroupX;
+                        const widthFromDrag = localRightEdgeX;
+                        const durationFromDrag = widthFromDrag / pixelsPerSecond;
+                        
+                        const proposedTrimEnd = clamp(
+                          snap(clip.trimStart + durationFromDrag),
+                          clip.trimStart + minStep,
+                          mediaDuration
+                        );
+                        
+                        // EndTime is based on trimmed duration
+                        const proposedEndTime = clip.startTime + (proposedTrimEnd - clip.trimStart);
+                        
+                        setActiveTrim({
+                          clipId: clip.id,
+                          side: 'right',
+                          proposedEndTime,
+                          proposedTrimEnd,
+                          absX: rightEdgeAbsX,
+                          absY: absGroupY,
+                        });
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (e.evt as any).cancelBubble = true;
+                      }}
+                      onDragEnd={(e) => {
+                        const mediaDuration = media?.duration ?? (clip.trimEnd - clip.trimStart);
+                        const handleLeftAbsX = e.target.getAbsolutePosition().x;
+                        const rightEdgeAbsX = handleLeftAbsX + HANDLE_W;
+                        
+                        // VISUAL TRIM: Calculate new trimEnd based on handle position
+                        const localRightEdgeX = rightEdgeAbsX - absGroupX;
+                        const widthFromDrag = localRightEdgeX;
+                        const durationFromDrag = widthFromDrag / pixelsPerSecond;
+                        
+                        let newTrimEnd = clamp(
+                          snap(clip.trimStart + durationFromDrag),
+                          clip.trimStart + minStep,
+                          mediaDuration
+                        );
+                        
+                        if (DEBUG_TRIM) {
+                          console.log('[TRIM][RIGHT][END]', {
+                            clipId: clip.id,
+                            before: {
+                              clipBounds: { start: clip.startTime, end: clip.endTime },
+                              trimBounds: { trimStart: clip.trimStart, trimEnd: clip.trimEnd },
+                            },
+                            requested: {
+                              clipBounds: { start: clip.startTime, end: 'will be recalculated' },
+                              trimBounds: { trimStart: clip.trimStart, trimEnd: newTrimEnd },
+                            },
+                            calculation: { localRightEdgeX, widthFromDrag, durationFromDrag },
+                            handleFinalPos: rightEdgeAbsX,
+                            note: 'VISUAL TRIM: startTime stays same, only trimEnd changes',
+                          });
+                        }
+                        rippleTrimEnd(clip.id, newTrimEnd, media?.duration ?? null);
+                        setActiveTrim(null);
+                        
+                        // Delay clearing trim flag to prevent Group's onDragEnd from firing
+                        // and incorrectly repositioning the clip
+                        setTimeout(() => {
+                          isTrimmingRef.current = false;
+                        }, 100);
+                        
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (e.evt as any).cancelBubble = true;
+                      }}
+                    />
+
+                    {/* Trim tooltip while dragging */}
+                    {activeTrim && activeTrim.clipId === clip.id ? (
+                      <Group>
+                        {activeTrim.side === 'left' && typeof activeTrim.proposedTrimStart === 'number' ? (
+                          <Text
+                            x={Math.max(0, (activeTrim.absX - absGroupX) + 10)}
+                            y={-18}
+                            text={`Start ${formatTime(activeTrim.proposedStartTime ?? clip.startTime)} (Trim ${(
+                              activeTrim.proposedTrimStart ?? clip.trimStart
+                            ).toFixed(1)}s)`}
+                            fontSize={12}
+                            fill="#111827"
+                          />
+                        ) : null}
+                        {activeTrim.side === 'right' && typeof activeTrim.proposedTrimEnd === 'number' ? (
+                          <Text
+                            x={Math.max(0, (activeTrim.absX - absGroupX) - 80)}
+                            y={-18}
+                            text={`End ${formatTime(activeTrim.proposedEndTime ?? clip.endTime)} (Trim ${(
+                              activeTrim.proposedTrimEnd ?? clip.trimEnd
+                            ).toFixed(1)}s)`}
+                            fontSize={12}
+                            fill="#111827"
+                          />
+                        ) : null}
+                      </Group>
+                    ) : null}
                   </Group>
                 );
               })}
