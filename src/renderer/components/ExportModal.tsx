@@ -52,14 +52,29 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose }) => {
     setProgress(0);
     setEta(undefined);
     setInFlight(true);
-    const req = {
-      timeline,
-      media,
-      trackId: 1,
-      resolution,
-      suggestedName: 'timeline-export',
-    } as const;
-    await startExportTimeline(req);
+    
+    try {
+      const req = {
+        timeline,
+        media,
+        trackId: 1,
+        resolution,
+        suggestedName: 'timeline-export',
+      } as const;
+      const result = await startExportTimeline(req);
+      
+      // Handle IPC-level errors (e.g., validation failures, cancelled save dialog)
+      if (!result.success) {
+        setError(result.error || 'Failed to start export');
+        setStatus('error');
+        setInFlight(false);
+      }
+    } catch (err) {
+      // Handle unexpected errors (e.g., IPC communication failure)
+      setError(err instanceof Error ? err.message : 'Failed to start export');
+      setStatus('error');
+      setInFlight(false);
+    }
   };
 
   const cancel = async () => {
