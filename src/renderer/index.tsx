@@ -179,6 +179,7 @@ const App: React.FC = () => {
           <div className="mt-6 text-center text-sm text-gray-500">
             Epic 1.2: Core Dependencies Installation - Complete
           </div>
+
         </div>
 
         {/* Main workspace: Video Player (left) and Media Library (right) */}
