@@ -62,6 +62,7 @@ interface TimelineState {
   getTimelineEnd: () => number;
   rippleTrimStart: (clipId: string, targetTrimStart: number, mediaDuration?: number | null) => void;
   rippleTrimEnd: (clipId: string, targetTrimEnd: number, mediaDuration?: number | null) => void;
+  splitClip: (clipId: string, splitTime: number) => void;
 }
 
 export const useTimelineStore = create<TimelineState>((set, get) => ({
@@ -283,6 +284,59 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
 
       return {
         clips: updatedClips,
+        playheadPosition,
+        currentTime,
+      };
+    });
+  },
+  splitClip: (clipId, splitTime) => {
+    set((state) => {
+      const idx = state.clips.findIndex((c) => c.id === clipId);
+      if (idx === -1) return state;
+
+      const clip = state.clips[idx];
+      // Validate split time strictly inside clip bounds and respect minimum duration on both sides
+      const leftDuration = splitTime - clip.startTime;
+      const rightDuration = clip.endTime - splitTime;
+
+      if (
+        leftDuration < MIN_CLIP_DURATION ||
+        rightDuration < MIN_CLIP_DURATION
+      ) {
+        return state;
+      }
+
+      // Preserve trims across the split. Invariants: (end - start) === (trimEnd - trimStart)
+      const leftClip: TimelineClip = {
+        id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        mediaId: clip.mediaId,
+        trackId: clip.trackId,
+        startTime: clip.startTime,
+        endTime: splitTime,
+        trimStart: clip.trimStart,
+        trimEnd: clip.trimStart + leftDuration,
+      };
+
+      const rightClip: TimelineClip = {
+        id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        mediaId: clip.mediaId,
+        trackId: clip.trackId,
+        startTime: splitTime,
+        endTime: clip.endTime,
+        trimStart: clip.trimStart + leftDuration,
+        trimEnd: clip.trimEnd,
+      };
+
+      const nextClips = [...state.clips];
+      // Replace original with two clips in-place
+      nextClips.splice(idx, 1, leftClip, rightClip);
+
+      const timelineEnd = computeTimelineEnd(nextClips);
+      const playheadPosition = Math.min(state.playheadPosition, timelineEnd);
+      const currentTime = Math.min(state.currentTime, timelineEnd);
+
+      return {
+        clips: nextClips,
         playheadPosition,
         currentTime,
       };
