@@ -46,13 +46,23 @@ const ScreenRecorder: React.FC<Props> = ({ onClose }) => {
         return;
       }
       setSources(res.sources);
-      if (res.sources.length > 0) setSelectedId(res.sources[0].id);
+      // Preserve the user's selection if it still exists in the new list
+      if (res.sources.length > 0) {
+        const stillExists = selectedId && res.sources.some(s => s.id === selectedId);
+        if (!stillExists) {
+          // Only reset to first source if current selection is no longer available
+          setSelectedId(res.sources[0].id);
+        }
+      } else {
+        // No sources available, clear selection
+        setSelectedId('');
+      }
     } catch (e) {
       setError('Failed to load sources');
     } finally {
       setLoading(false);
     }
-  }, [includeWindows]);
+  }, [includeWindows, selectedId]);
 
   useEffect(() => {
     void refreshSources();
