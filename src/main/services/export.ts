@@ -145,12 +145,11 @@ function buildGraph(
     }
   }
 
-  // Helper: find first overlay clip overlapping a window
-  const findOverlayForWindow = (start: number, end: number): TimelineClip | null => {
-    const candidates = overlayClips
+  // Helper: find ALL overlay clips overlapping a window (sorted by start time)
+  const findOverlaysForWindow = (start: number, end: number): TimelineClip[] => {
+    return overlayClips
       .filter((o) => o.endTime > start && o.startTime < end)
       .sort((a, b) => a.startTime - b.startTime);
-    return candidates[0] ?? null;
   };
 
   baseClips.forEach((base, i) => {
@@ -174,39 +173,62 @@ function buildGraph(
     );
 
     // Overlay if overlaps within base window
-    let vOutLabel = `v${i}`;
-    const ov = findOverlayForWindow(base.startTime, base.endTime);
-    if (ov) {
+    // Support multiple overlays per base clip by chaining them
+    let vOutLabel = bv; // Start with base video
+    const overlays = findOverlaysForWindow(base.startTime, base.endTime);
+    
+    overlays.forEach((ov, ovIndex) => {
       const ovMedia = media.find((m) => m.id === ov.mediaId);
-      if (ovMedia) {
-        const ovIdx = ensureInputIndex(ovMedia.path);
-        // Compute overlap window relative to timeline
-        const overlapStart = Math.max(base.startTime, ov.startTime);
-        const overlapEnd = Math.min(base.endTime, ov.endTime);
-        const overlapDur = Math.max(0, overlapEnd - overlapStart);
-        if (overlapDur > 0) {
-          // Overlay trim within overlay source
-          const ovTrimStart = ov.trimStart + Math.max(0, overlapStart - ov.startTime);
-          const ovTrimEnd = ovTrimStart + overlapDur;
-          const ovLabel = `ov${i}`;
-          filters.push(
-            `[${ovIdx}:v]trim=start=${f(ovTrimStart)}:end=${f(ovTrimEnd)},setpts=PTS-STARTPTS,scale=${overlayW}:-2[${ovLabel}]`
-          );
-          filters.push(
-            `[${bv}][${ovLabel}]overlay=x=main_w-w-20:y=main_h-h-20:shortest=1[${vOutLabel}]`
-          );
-        } else {
-          // No effective overlap; passthrough base video
-          vOutLabel = bv;
-        }
-      } else {
-        // overlay media not found; passthrough base video
-        vOutLabel = bv;
-      }
-    } else {
-      // No overlay; passthrough base video
-      vOutLabel = bv;
+      if (!ovMedia) return; // Skip if media not found
+      
+      const ovIdx = ensureInputIndex(ovMedia.path);
+      
+      // Compute overlap window relative to timeline
+      const overlapStart = Math.max(base.startTime, ov.startTime);
+      const overlapEnd = Math.min(base.endTime, ov.endTime);
+      const overlapDur = Math.max(0, overlapEnd - overlapStart);
+      
+      if (overlapDur <= 0) return; // Skip if no actual overlap
+      
+      // Calculate delay: how long after base clip starts does overlay appear?
+      const delayInBase = overlapStart - base.startTime;
+      
+      // Calculate padding after overlay ends (to fill rest of base clip duration)
+      const baseDur = base.endTime - base.startTime;
+      const padAfter = Math.max(0, baseDur - delayInBase - overlapDur);
+      
+      // Overlay trim within overlay source
+      const ovTrimStart = ov.trimStart + Math.max(0, overlapStart - ov.startTime);
+      const ovTrimEnd = ovTrimStart + overlapDur;
+      const ovLabel = `ov${i}_${ovIndex}`;
+      const ovPaddedLabel = `ovpad${i}_${ovIndex}`;
+      
+      // Trim overlay, convert to RGBA for transparency, scale, then add delay padding before and after
+      // The tpad filter adds transparent frames to align overlay timing within the base clip
+      filters.push(
+        `[${ovIdx}:v]trim=start=${f(ovTrimStart)}:end=${f(ovTrimEnd)},setpts=PTS-STARTPTS,format=rgba,scale=${overlayW}:-2,tpad=start_duration=${f(delayInBase)}:stop_duration=${f(padAfter)}:color=0x00000000[${ovPaddedLabel}]`
+      );
+      
+      // Apply overlay to current video stream (chains multiple overlays)
+      // shortest=0 means use longest input duration (base video continues after overlay)
+      const nextLabel = `v${i}_ov${ovIndex}`;
+      filters.push(
+        `[${vOutLabel}][${ovPaddedLabel}]overlay=x=main_w-w-20:y=main_h-h-20:shortest=0[${nextLabel}]`
+      );
+      
+      // Update current video label for next overlay in chain
+      vOutLabel = nextLabel;
+    });
+    
+    // If no overlays were applied, vOutLabel is still bv (base video)
+    // Rename final output to expected label
+    const finalLabel = `v${i}`;
+    if (vOutLabel !== bv) {
+      // Had overlays, rename final chained result
+      vOutLabel = vOutLabel; // Keep the last overlay output
     }
+    // Store for later normalization
+    const vBeforeNormalize = vOutLabel;
 
     // Normalize video to target dimensions and pixel format; unify fps to 30
     const vs = `vs${i}`;
