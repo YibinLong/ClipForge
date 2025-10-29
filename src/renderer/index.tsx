@@ -43,10 +43,17 @@ const App: React.FC = () => {
   // when timelineClips, mediaClips, or currentTime changes.
   const { active1, active2 } = useMemo(() => {
     const findActiveForTrack = (trackId: number) => {
-      // Find clip at current playback time for this track
-      const clip = timelineClips.find(
+      // Find all clips at current playback time for this track
+      // Then select the earliest-starting one (deterministic behavior when clips overlap)
+      const overlappingClips = timelineClips.filter(
         (c) => c.trackId === trackId && currentTime >= c.startTime && currentTime < c.endTime
-      ) ?? null;
+      );
+      
+      // Sort by startTime (earliest first) and take the first one
+      // This ensures deterministic selection: the clip that started earliest is active
+      const clip = overlappingClips.length > 0
+        ? overlappingClips.sort((a, b) => a.startTime - b.startTime)[0]
+        : null;
       
       const media = clip ? mediaClips.find((m) => m.id === clip.mediaId) ?? null : null;
       let mediaTime = 0;
