@@ -104,7 +104,14 @@ const WebcamRecorder: React.FC<Props> = ({ onClose }) => {
           let outputPath: string | undefined = undefined;
           if (useSaveAs) {
             const choose = await chooseRecordingOutput();
-            if (!isIPCError(choose)) outputPath = choose.filePath;
+            if (isIPCError(choose)) {
+              // User cancelled the save dialog or an error occurred
+              setError('Save cancelled or failed');
+              showToast('error', 'Recording not saved - dialog cancelled');
+              setStatus('Idle');
+              return;
+            }
+            outputPath = choose.filePath;
           }
 
           const transRes = await transcodeWebmToMp4(saveRes.webmPath, outputPath);
