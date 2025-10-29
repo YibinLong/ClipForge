@@ -28,6 +28,7 @@ import { isIPCError, ImportFileResponse, IPC_CHANNELS } from '../../types/ipc';
 import { MediaClip } from '../../types/media';
 import { useMediaStore } from '../stores/mediaStore';
 import ScreenRecorder from './ScreenRecorder';
+import WebcamRecorder from './WebcamRecorder';
 
 interface MediaLibraryProps {
   onSelectClip?: (clip: MediaClip) => void;
@@ -92,6 +93,8 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
 
   // Screen recorder modal flag
   const [showRecorder, setShowRecorder] = useState(false);
+  // Webcam recorder modal flag
+  const [showWebcamRecorder, setShowWebcamRecorder] = useState(false);
 
   // Initialize persisted media library on first mount
   useEffect(() => {
@@ -409,6 +412,12 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
         >
           🎥 Record Screen
         </button>
+        <button
+          onClick={() => setShowWebcamRecorder(true)}
+          className="w-full py-4 px-6 rounded-lg font-semibold text-white text-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-all duration-200 hover:shadow-lg"
+        >
+          📷 Record Webcam
+        </button>
       </div>
 
       {/* Drag-and-Drop Zone */}
@@ -554,6 +563,9 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
       </div>
       {showRecorder && (
         <ScreenRecorder onClose={() => setShowRecorder(false)} />
+      )}
+      {showWebcamRecorder && (
+        <WebcamRecorder onClose={() => setShowWebcamRecorder(false)} />
       )}
     </div>
   );
