@@ -30,6 +30,15 @@ import {
   StartExportResponse,
   ExportProgressEvent,
   CancelExportResponse,
+  GetScreenSourcesResponse,
+  SetCaptureSourceRequest,
+  SetCaptureSourceResponse,
+  SaveRecordingFileRequest,
+  SaveRecordingFileResponse,
+  TranscodeWebmToMp4Request,
+  TranscodeWebmToMp4Response,
+  ChooseRecordingOutputResponse,
+  OpenRecordingsFolderResponse,
 } from '../../types/ipc';
 import { MediaClip } from '../../types/media';
 
@@ -129,5 +138,52 @@ export async function cancelExport(jobId?: string): Promise<CancelExportResponse
     IPC_CHANNELS.CANCEL_EXPORT,
     { jobId }
   ) as Promise<CancelExportResponse | IPCErrorResponse>;
+}
+
+// ============================================================================
+// Screen recording helpers (Epic 7.1)
+// ============================================================================
+
+export async function getScreenSources(includeWindows: boolean): Promise<GetScreenSourcesResponse | IPCErrorResponse> {
+  return window.electron.invoke(
+    IPC_CHANNELS.GET_SCREEN_SOURCES,
+    { includeWindows }
+  ) as Promise<GetScreenSourcesResponse | IPCErrorResponse>;
+}
+
+export async function setCaptureSource(sourceId: string): Promise<SetCaptureSourceResponse | IPCErrorResponse> {
+  const req: SetCaptureSourceRequest = { sourceId };
+  return window.electron.invoke(
+    IPC_CHANNELS.SET_CAPTURE_SOURCE,
+    req
+  ) as Promise<SetCaptureSourceResponse | IPCErrorResponse>;
+}
+
+export async function saveRecordingFile(data: ArrayBuffer, filenameHint?: string): Promise<SaveRecordingFileResponse | IPCErrorResponse> {
+  const req: SaveRecordingFileRequest = { data, filenameHint };
+  return window.electron.invoke(
+    IPC_CHANNELS.SAVE_RECORDING_FILE,
+    req
+  ) as Promise<SaveRecordingFileResponse | IPCErrorResponse>;
+}
+
+export async function transcodeWebmToMp4(inputPath: string, outputPath?: string): Promise<TranscodeWebmToMp4Response | IPCErrorResponse> {
+  const req: TranscodeWebmToMp4Request = { inputPath, outputPath };
+  return window.electron.invoke(
+    IPC_CHANNELS.TRANSCODE_WEBM_TO_MP4,
+    req
+  ) as Promise<TranscodeWebmToMp4Response | IPCErrorResponse>;
+}
+
+export async function chooseRecordingOutput(): Promise<ChooseRecordingOutputResponse | IPCErrorResponse> {
+  return window.electron.invoke(
+    IPC_CHANNELS.CHOOSE_RECORDING_OUTPUT
+  ) as Promise<ChooseRecordingOutputResponse | IPCErrorResponse>;
+}
+
+export async function openRecordingsFolder(): Promise<OpenRecordingsFolderResponse | IPCErrorResponse> {
+  return window.electron.invoke(
+    IPC_CHANNELS.OPEN_RECORDINGS_FOLDER
+  ) as Promise<OpenRecordingsFolderResponse | IPCErrorResponse>;
 }
 
