@@ -27,8 +27,7 @@ import React, { useEffect, useState } from 'react';
 import { isIPCError, ImportFileResponse, IPC_CHANNELS } from '../../types/ipc';
 import { MediaClip } from '../../types/media';
 import { useMediaStore } from '../stores/mediaStore';
-import ScreenRecorder from './ScreenRecorder';
-import WebcamRecorder from './WebcamRecorder';
+import RecordingPanel from './RecordingPanel';
 
 interface MediaLibraryProps {
   onSelectClip?: (clip: MediaClip) => void;
@@ -91,10 +90,18 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
   // State to track loading state during import
   const [isImporting, setIsImporting] = useState(false);
 
-  // Screen recorder modal flag
-  const [showRecorder, setShowRecorder] = useState(false);
-  // Webcam recorder modal flag
-  const [showWebcamRecorder, setShowWebcamRecorder] = useState(false);
+  // Unified recording panel
+  const [showRecordingPanel, setShowRecordingPanel] = useState(false);
+
+  // Optional: auto-scroll to latest item when clips change
+  const listRef = React.useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    try {
+      if (listRef.current) {
+        listRef.current.scrollTop = listRef.current.scrollHeight;
+      }
+    } catch {}
+  }, [clips.length]);
 
   // Initialize persisted media library on first mount
   useEffect(() => {
@@ -407,16 +414,10 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
           {isInitializing ? '⏳ Loading Library...' : isImporting ? '⏳ Opening...' : '➕ Import Video'}
         </button>
         <button
-          onClick={() => setShowRecorder(true)}
+          onClick={() => setShowRecordingPanel(true)}
           className="w-full py-4 px-6 rounded-lg font-semibold text-white text-lg bg-purple-600 hover:bg-purple-700 active:bg-purple-800 transition-all duration-200 hover:shadow-lg"
         >
-          🎥 Record Screen
-        </button>
-        <button
-          onClick={() => setShowWebcamRecorder(true)}
-          className="w-full py-4 px-6 rounded-lg font-semibold text-white text-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-all duration-200 hover:shadow-lg"
-        >
-          📷 Record Webcam
+          🎛️ Open Recording Panel
         </button>
       </div>
 
@@ -475,7 +476,7 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
                 Clear All
               </button>
             </div>
-            <div className="space-y-3 max-h-[500px] overflow-y-auto">
+            <div ref={listRef} className="space-y-3 max-h-[500px] overflow-y-auto">
               {clips.map((clip) => (
                 <div
                   key={clip.id}
@@ -561,11 +562,8 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
           </div>
         )}
       </div>
-      {showRecorder && (
-        <ScreenRecorder onClose={() => setShowRecorder(false)} />
-      )}
-      {showWebcamRecorder && (
-        <WebcamRecorder onClose={() => setShowWebcamRecorder(false)} />
+      {showRecordingPanel && (
+        <RecordingPanel onClose={() => setShowRecordingPanel(false)} />
       )}
     </div>
   );
