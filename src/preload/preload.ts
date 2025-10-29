@@ -132,7 +132,9 @@ contextBridge.exposeInMainWorld('electron', {
     // Validate channel is allowed
     if (!isChannelAllowed(channel)) {
       console.error(`[PRELOAD] Cannot listen to unauthorized channel: "${channel}"`);
-      return () => {}; // Return empty unsubscribe function
+      return () => {
+        // Empty unsubscribe function for unauthorized channels
+      };
     }
     
     // Create subscription that strips the event object (security)
@@ -171,7 +173,9 @@ contextBridge.exposeInMainWorld('electron', {
   onExportProgress: (callback: (...args: unknown[]) => void) => {
     if (!isChannelAllowed(IPC_CHANNELS.EXPORT_PROGRESS)) {
       console.error('[PRELOAD] EXPORT_PROGRESS channel not allowed');
-      return () => {};
+      return () => {
+        // Empty unsubscribe for unauthorized channels
+      };
     }
     const sub = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => callback(...args);
     ipcRenderer.on(IPC_CHANNELS.EXPORT_PROGRESS, sub);
@@ -204,13 +208,12 @@ contextBridge.exposeInMainWorld('electron', {
   onGenerateCaptionsProgress: (callback: (...args: unknown[]) => void) => {
     if (!isChannelAllowed(IPC_CHANNELS.GENERATE_CAPTIONS_PROGRESS)) {
       console.error('[PRELOAD] GENERATE_CAPTIONS_PROGRESS channel not allowed');
-      return () => {};
+      return () => {
+        // Empty unsubscribe for unauthorized channels
+      };
     }
     const sub = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => callback(...args);
     ipcRenderer.on(IPC_CHANNELS.GENERATE_CAPTIONS_PROGRESS, sub);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.GENERATE_CAPTIONS_PROGRESS, sub);
   },
 });
-
-console.log('✅ Preload script loaded successfully');
-console.log(`[PRELOAD] Allowed IPC channels: ${ALLOWED_CHANNELS.join(', ')}`);

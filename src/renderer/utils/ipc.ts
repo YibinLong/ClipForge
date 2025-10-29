@@ -19,8 +19,6 @@
 
 import {
   IPC_CHANNELS,
-  TestMessageRequest,
-  TestMessageResponse,
   IPCErrorResponse,
   isIPCError,
   SaveMediaLibraryRequest,
@@ -46,40 +44,10 @@ import {
 import { MediaClip } from '../../types/media';
 
 /**
- * Call the test-message IPC handler
- * 
- * Sends a message to the main process and receives an echo response
- * 
- * @param message - The message to send
- * @returns Promise resolving to the response or error
- * 
- * @example
- * const result = await testMessage('Hello, main process!');
- * if (isIPCError(result)) {
- *   console.error('Error:', result.error);
- * } else {
- *   console.log('Reply:', result.reply);
- *   console.log('Timestamp:', new Date(result.timestamp));
- * }
- */
-export async function testMessage(
-  message: string
-): Promise<TestMessageResponse | IPCErrorResponse> {
-  const request: TestMessageRequest = { message };
-  
-  const response = await window.electron.invoke(
-    IPC_CHANNELS.TEST_MESSAGE,
-    request
-  );
-  
-  return response as TestMessageResponse | IPCErrorResponse;
-}
-
-/**
  * Generic IPC invoke wrapper with type safety
  * 
  * This is a lower-level function that can be used for any IPC channel
- * Prefer using specific functions like testMessage() when available
+ * Prefer using specific functions when available
  * 
  * @param channel - The IPC channel to invoke
  * @param args - Arguments to pass to the handler

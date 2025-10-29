@@ -8,20 +8,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
-import IPCTest from './components/IPCTest';
 import MediaLibrary from './components/MediaLibrary';
 import VideoPlayer from './components/VideoPlayer';
 import Timeline from './components/Timeline';
 import { MediaClip } from '../types/media';
 import { useTimelineStore } from './stores/timelineStore';
 import { useMediaStore } from './stores/mediaStore';
-
-// Verify that the Electron API is available
-if (window.electron) {
-  console.log('✅ Electron API is available via window.electron');
-} else {
-  console.warn('⚠️ Electron API not available - preload script may have failed');
-}
 
 /**
  * App Component - Main application component with Tailwind styling
@@ -46,19 +38,34 @@ const App: React.FC = () => {
   const mediaClips = useMediaStore((s) => s.clips);
 
   // Active clip computation per track
+  // **EXPLANATION**: This optimizes finding which clip is currently playing on each track.
+  // We use useMemo to avoid recalculating this on every render - it only recalculates
+  // when timelineClips, mediaClips, or currentTime changes.
   const { active1, active2 } = useMemo(() => {
     const findActiveForTrack = (trackId: number) => {
-      const clip = timelineClips
-        .filter((c) => c.trackId === trackId && currentTime >= c.startTime && currentTime < c.endTime)
-        .sort((a, b) => a.startTime - b.startTime)[0] ?? null;
+      // Find all clips at current playback time for this track
+      // Then select the earliest-starting one (deterministic behavior when clips overlap)
+      const overlappingClips = timelineClips.filter(
+        (c) => c.trackId === trackId && currentTime >= c.startTime && currentTime < c.endTime
+      );
+      
+      // Sort by startTime (earliest first) and take the first one
+      // This ensures deterministic selection: the clip that started earliest is active
+      const clip = overlappingClips.length > 0
+        ? overlappingClips.sort((a, b) => a.startTime - b.startTime)[0]
+        : null;
+      
       const media = clip ? mediaClips.find((m) => m.id === clip.mediaId) ?? null : null;
       let mediaTime = 0;
+      
       if (clip) {
         const withinClip = Math.max(0, currentTime - clip.startTime);
         mediaTime = Math.max(clip.trimStart, Math.min(clip.trimEnd, clip.trimStart + withinClip));
       }
+      
       return { clip, media, mediaTime } as const;
     };
+    
     return { active1: findActiveForTrack(1), active2: findActiveForTrack(2) };
   }, [timelineClips, mediaClips, currentTime]);
 

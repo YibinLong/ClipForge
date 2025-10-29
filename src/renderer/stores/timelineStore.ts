@@ -135,20 +135,6 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
       const maxTrimStart = Math.max(0, Math.min(maxByClip, maxByMedia));
       const desired = clamp(targetTrimStart, 0, maxTrimStart);
 
-      console.log('[STORE][rippleTrimStart] Input:', {
-        clipId,
-        targetTrimStart,
-        mediaDuration,
-        currentClip: {
-          startTime: clip.startTime,
-          endTime: clip.endTime,
-          trimStart: clip.trimStart,
-          trimEnd: clip.trimEnd,
-          duration: clip.endTime - clip.startTime,
-        },
-        constraints: { maxByClip, maxByMedia, maxTrimStart, desired },
-      });
-
       let actualTrimStart = desired;
 
       if (desired < clip.trimStart - EPSILON) {
@@ -165,25 +151,11 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
       }
 
       if (Math.abs(actualTrimStart - clip.trimStart) < EPSILON) {
-        console.log('[STORE][rippleTrimStart] No change (within epsilon), skipping update');
         return state;
       }
 
       const added = clip.trimStart - actualTrimStart;
       const newDuration = Math.max(MIN_CLIP_DURATION, clip.trimEnd - actualTrimStart);
-      const newStartTime = Math.max(0, clip.startTime - Math.max(0, added));
-
-      console.log('[STORE][rippleTrimStart] Applying update:', {
-        actualTrimStart,
-        calculation: { added, newDuration, newStartTime: clip.endTime - newDuration },
-        updatedClip: {
-          trimStart: actualTrimStart,
-          startTime: clip.endTime - newDuration,
-          endTime: clip.endTime,
-          visualWidth: newDuration,
-          note: 'LEFT TRIM: Right edge stays fixed, left edge moves',
-        },
-      });
 
       // LEFT TRIM: Keep endTime fixed, adjust startTime so right edge stays in place
       const updatedClip: TimelineClip = {
@@ -196,11 +168,6 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
       let updatedClips = [...state.clips];
       updatedClips[clipIndex] = updatedClip;
       // Don't reflow - we want simple trim, not ripple editing
-
-      console.log('[STORE][rippleTrimStart] Final state:', {
-        before: { start: clip.startTime, end: clip.endTime, trimStart: clip.trimStart, trimEnd: clip.trimEnd },
-        after: { start: updatedClip.startTime, end: updatedClip.endTime, trimStart: updatedClip.trimStart, trimEnd: updatedClip.trimEnd },
-      });
 
       const timelineEnd = computeTimelineEnd(updatedClips);
       const playheadPosition = Math.min(state.playheadPosition, timelineEnd);
@@ -226,20 +193,6 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
       const maxTrimEnd = Math.max(minTrimEnd, mediaCap);
       const desired = clamp(targetTrimEnd, minTrimEnd, maxTrimEnd);
 
-      console.log('[STORE][rippleTrimEnd] Input:', {
-        clipId,
-        targetTrimEnd,
-        mediaDuration,
-        currentClip: {
-          startTime: clip.startTime,
-          endTime: clip.endTime,
-          trimStart: clip.trimStart,
-          trimEnd: clip.trimEnd,
-          duration: clip.endTime - clip.startTime,
-        },
-        constraints: { minTrimEnd, mediaCap, maxTrimEnd, desired },
-      });
-
       let actualTrimEnd = desired;
 
       if (desired > clip.trimEnd + EPSILON) {
@@ -258,23 +211,11 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
       }
 
       if (Math.abs(actualTrimEnd - clip.trimEnd) < EPSILON) {
-        console.log('[STORE][rippleTrimEnd] No change (within epsilon), skipping update');
         return state;
       }
 
       const newDuration = Math.max(MIN_CLIP_DURATION, actualTrimEnd - clip.trimStart);
       
-      console.log('[STORE][rippleTrimEnd] Applying update:', {
-        actualTrimEnd,
-        calculation: { newDuration, newEndTime: clip.startTime + newDuration },
-        updatedClip: {
-          trimEnd: actualTrimEnd,
-          startTime: clip.startTime,
-          endTime: clip.startTime + newDuration,
-          visualWidth: newDuration,
-        },
-      });
-
       const updatedClip: TimelineClip = {
         ...clip,
         trimEnd: actualTrimEnd,
@@ -285,11 +226,6 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
       let updatedClips = [...state.clips];
       updatedClips[clipIndex] = updatedClip;
       // Don't reflow - we want simple trim, not ripple editing
-
-      console.log('[STORE][rippleTrimEnd] Final state:', {
-        before: { start: clip.startTime, end: clip.endTime, trimStart: clip.trimStart, trimEnd: clip.trimEnd },
-        after: { start: updatedClip.startTime, end: updatedClip.endTime, trimStart: updatedClip.trimStart, trimEnd: updatedClip.trimEnd },
-      });
 
       const timelineEnd = computeTimelineEnd(updatedClips);
       const playheadPosition = Math.min(state.playheadPosition, timelineEnd);

@@ -75,11 +75,9 @@ function generateClipId(): string {
  * }
  */
 export async function handleImportFile(
-  event: IpcMainInvokeEvent
+  _event: IpcMainInvokeEvent
 ): Promise<ImportFileResponse | IPCErrorResponse> {
   try {
-    console.log('[IMPORT] Opening file dialog for video selection...');
-
     // Open native file dialog with video file filters
     const result = await dialog.showOpenDialog({
       // Allow selecting multiple files at once
@@ -104,8 +102,6 @@ export async function handleImportFile(
 
     // Check if user cancelled the dialog
     if (result.canceled) {
-      console.log('[IMPORT] File dialog cancelled by user');
-      
       // Return empty array (not an error - user simply cancelled)
       return {
         clips: [],
@@ -113,17 +109,12 @@ export async function handleImportFile(
       };
     }
 
-    // Log selected files
-    console.log(`[IMPORT] User selected ${result.filePaths.length} file(s):`, result.filePaths);
-
     // Process each file: extract metadata and generate thumbnail
     // We process sequentially to avoid overwhelming FFmpeg
     const clips: MediaClip[] = [];
     
     for (const filePath of result.filePaths) {
       try {
-        console.log(`[IMPORT] Processing file: ${filePath}`);
-        
         // Generate unique ID for this clip
         const clipId = generateClipId();
         
@@ -147,18 +138,13 @@ export async function handleImportFile(
         };
         
         clips.push(clip);
-        console.log(`[IMPORT] Successfully processed: ${filename}`);
       } catch (fileError) {
         // Log error but continue processing other files
         // This prevents one corrupted file from stopping the entire import
         console.error(`[IMPORT] Failed to process file ${filePath}:`, fileError);
-        console.warn(`[IMPORT] Skipping file: ${path.basename(filePath)}`);
-        // In the future, we could add a "partial success" response
         // For now, we just skip failed files
       }
     }
-
-    console.log(`[IMPORT] Successfully processed ${clips.length} of ${result.filePaths.length} file(s)`);
 
     // Return the processed clips
     return {

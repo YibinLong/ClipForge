@@ -146,7 +146,6 @@ export function ensureThumbnailsDirectory(): string {
   // Create directory if it doesn't exist
   // recursive: true creates parent directories if needed
   if (!fs.existsSync(thumbnailsDir)) {
-    console.log('[FFMPEG] Creating thumbnails directory:', thumbnailsDir);
     fs.mkdirSync(thumbnailsDir, { recursive: true });
   }
   
@@ -160,7 +159,6 @@ export function ensureSubtitlesDirectory(): string {
   const userDataPath = app.getPath('userData');
   const subtitlesDir = path.join(userDataPath, 'subtitles');
   if (!fs.existsSync(subtitlesDir)) {
-    console.log('[FFMPEG] Creating subtitles directory:', subtitlesDir);
     fs.mkdirSync(subtitlesDir, { recursive: true });
   }
   return subtitlesDir;
@@ -195,10 +193,6 @@ export function ensureSubtitlesDirectory(): string {
  */
 export function getVideoMetadata(filePath: string): Promise<VideoMetadata> {
   return new Promise((resolve, reject) => {
-    console.log('[FFMPEG] Extracting metadata from:', filePath);
-    
-    // Use FFprobe to extract metadata
-    // This is a static method on the ffmpeg object (as per Context7 docs)
     ffmpeg.ffprobe(filePath, (err, metadata) => {
       if (err) {
         console.error('[FFMPEG] Error extracting metadata:', err);
@@ -233,8 +227,6 @@ export function getVideoMetadata(filePath: string): Promise<VideoMetadata> {
           const stats = fs.statSync(filePath);
           size = stats.size;
         }
-        
-        console.log('[FFMPEG] Metadata extracted:', { duration, width, height, size });
         
         resolve({
           duration,
@@ -306,8 +298,6 @@ export function generateThumbnail(
       timestamp = '0'; // First frame
     }
     
-    console.log('[FFMPEG] Generating thumbnail at timestamp:', timestamp, 'for', filePath);
-    
     // Use FFmpeg screenshots API to extract a single frame
     // As per Context7 docs: ffmpeg(filePath).screenshots({ timestamps, folder, filename })
     ffmpeg(filePath)
@@ -319,7 +309,6 @@ export function generateThumbnail(
         // Could add size: '320x240' if we want consistent thumbnail sizes
       })
       .on('end', () => {
-        console.log('[FFMPEG] Thumbnail generated:', thumbnailPath);
         resolve(thumbnailPath);
       })
       .on('error', (err) => {

@@ -1,4 +1,4 @@
-import { IpcMainInvokeEvent, app } from 'electron';
+import { IpcMainInvokeEvent } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { extractAudioToWav, ensureSubtitlesDirectory } from '../services/ffmpeg';
@@ -50,13 +50,25 @@ export async function handleGenerateCaptions(
       await generateSRTFile(data, outSrt);
 
       // Cleanup temp wav
-      try { fs.existsSync(tmpWav) && fs.unlinkSync(tmpWav); } catch {}
+      try { 
+        if (fs.existsSync(tmpWav)) {
+          fs.unlinkSync(tmpWav);
+        }
+      } catch (err) {
+        // Ignore cleanup errors
+      }
 
       sendProgress({ clipId, phase: 'complete', message: 'Captions generated', progress: 100 });
       const ok: GenerateCaptionsResponse = { success: true, srtPath: outSrt };
       return ok;
     } catch (e) {
-      try { fs.existsSync(tmpWav) && fs.unlinkSync(tmpWav); } catch {}
+      try { 
+        if (fs.existsSync(tmpWav)) {
+          fs.unlinkSync(tmpWav);
+        }
+      } catch (err) {
+        // Ignore cleanup errors
+      }
       const msg = e instanceof Error ? e.message : String(e);
       sendProgress({ clipId, phase: 'error', errorMessage: msg });
       const err: IPCErrorResponse = { success: false, error: 'Caption generation failed', details: msg };

@@ -47,25 +47,10 @@ type IPCHandler = (
  * });
  */
 export function registerHandler(channel: IPCChannel, handler: IPCHandler): void {
-  console.log(`[IPC] Registering handler for channel: ${channel}`);
-
   ipcMain.handle(channel, async (event, ...args) => {
-    const startTime = Date.now();
-    
-    // Log incoming IPC call with parameters (for debugging)
-    console.log(`[IPC] Incoming call to '${channel}'`, {
-      args: args.length > 0 ? args : '(no args)',
-      sender: event.sender.id,
-    });
-
     try {
       // Call the actual handler function
       const result = await handler(event, ...args);
-      
-      // Log successful completion with execution time
-      const duration = Date.now() - startTime;
-      console.log(`[IPC] Call to '${channel}' completed successfully (${duration}ms)`);
-      
       return result;
     } catch (error) {
       // Log error with full stack trace
@@ -93,20 +78,6 @@ export function registerHandler(channel: IPCChannel, handler: IPCHandler): void 
  * @param channel - The IPC channel to unregister
  */
 export function unregisterHandler(channel: IPCChannel): void {
-  console.log(`[IPC] Unregistering handler for channel: ${channel}`);
   ipcMain.removeHandler(channel);
-}
-
-/**
- * Check if a handler is registered for a given channel
- * 
- * @param channel - The IPC channel to check
- * @returns true if a handler exists
- */
-export function hasHandler(channel: IPCChannel): boolean {
-  // Note: Electron doesn't provide a direct way to check this,
-  // so this is a placeholder for future implementation if needed
-  // For now, we rely on Electron's internal tracking
-  return true; // Assume handler registration works
 }
 
