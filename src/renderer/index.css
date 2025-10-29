@@ -11,3 +11,20 @@ body {
   margin: 0;
   padding: 0;
 }
+
+/* Basic caption styling for preview player */
+video::cue {
+  color: #ffffff;
+  font-size: 16px;
+  background: transparent;
+  text-shadow:
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000;
+}
+
+/* Chromium-specific: ensure no background box behind cues */
+video::-webkit-media-text-track-display {
+  background: transparent !important;
+}

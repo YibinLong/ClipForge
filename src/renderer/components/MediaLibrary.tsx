@@ -27,7 +27,7 @@ import React, { useEffect, useState } from 'react';
 import { isIPCError, ImportFileResponse, IPC_CHANNELS } from '../../types/ipc';
 import { MediaClip } from '../../types/media';
 import { useMediaStore } from '../stores/mediaStore';
-import { generateCaptions, onGenerateCaptionsProgress } from '../utils/ipc';
+import { generateCaptions, onGenerateCaptionsProgress, revealInFolder } from '../utils/ipc';
 import RecordingPanel from './RecordingPanel';
 
 interface MediaLibraryProps {
@@ -67,6 +67,25 @@ function formatFileSize(bytes: number): string {
  */
 function formatResolution(width: number, height: number): string {
   return `${width}x${height}`;
+}
+
+/**
+ * Create a clean, short folder label like "…/Parent/Folder" with middle ellipsis if long.
+ * Shows the last 1–2 folder segments and prefixes with … if there are more.
+ */
+function formatFolderDisplay(absolutePath: string): string {
+  const parts = absolutePath.split(/\\|\//).filter(Boolean);
+  if (parts.length <= 1) return '—';
+  const folderParts = parts.slice(0, -1); // drop filename
+  if (folderParts.length === 0) return '—';
+  const lastTwo = folderParts.slice(-2).join('/');
+  const base = folderParts.length > 2 ? `…/${lastTwo}` : lastTwo;
+  // Middle-ellipsize if still long
+  const MAX = 32;
+  if (base.length <= MAX) return base;
+  const head = base.slice(0, 16);
+  const tail = base.slice(-14);
+  return `${head}…${tail}`;
 }
 
 /**
@@ -476,9 +495,21 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
                         <span>Size: {formatFileSize(clip.size)}</span>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-400 truncate mt-2" title={clip.path}>
-                      {clip.path}
-                    </p>
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <div className="inline-flex items-center gap-1 text-xs text-gray-600 px-2 py-1 rounded border border-gray-200 bg-gray-50 min-w-0">
+                        <span aria-hidden>📁</span>
+                        <span className="truncate" title={clip.path}>
+                          {`Location: ${formatFolderDisplay(clip.path)}`}
+                        </span>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); void revealInFolder(clip.path); }}
+                        className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+                        title="Show this file in Finder"
+                      >
+                        Show in Finder
+                      </button>
+                    </div>
                 <div className="mt-2 flex items-center gap-2">
                   {clip.subtitlesPath ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded bg-green-100 text-green-700 border border-green-200" title={clip.subtitlesPath}>

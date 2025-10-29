@@ -100,6 +100,16 @@ export const IPC_CHANNELS = {
    */
   GENERATE_CAPTIONS_PROGRESS: 'generate-captions-progress',
   
+  /**
+   * Read a text file's contents (used for loading SRT into renderer)
+   */
+  READ_TEXT_FILE: 'read-text-file',
+  
+  /**
+   * Reveal a file in its containing folder (opens Finder/Explorer and selects it)
+   */
+  REVEAL_IN_FOLDER: 'reveal-in-folder',
+  
   // Future channels will be added here as we implement more features:
   // START_RECORDING: 'start-recording',
   // EXPORT_VIDEO: 'export-video',
@@ -260,7 +270,9 @@ export type IPCResponse =
   | TranscodeWebmToMp4Response
   | ChooseRecordingOutputResponse
   | OpenRecordingsFolderResponse
-  | GenerateCaptionsResponse;
+  | GenerateCaptionsResponse
+  | ReadTextFileResponse
+  | RevealInFolderResponse;
 
 /**
  * Combined response type that includes potential errors
@@ -359,5 +371,30 @@ export interface GenerateCaptionsProgressEvent {
   message?: string;
   progress?: number; // 0..100 if applicable
   errorMessage?: string;
+}
+
+// =========================================================================
+// FS Bridge (Read Text) — utility for safe file text loading in renderer
+// =========================================================================
+
+export interface ReadTextFileRequest {
+  /** Absolute path to the file to read */
+  path: string;
+  /** Optional text encoding; defaults to 'utf8' */
+  encoding?: BufferEncoding;
+}
+
+export interface ReadTextFileResponse {
+  success: true;
+  content: string;
+}
+
+export interface RevealInFolderRequest {
+  /** Absolute path to a file to reveal */
+  path: string;
+}
+
+export interface RevealInFolderResponse {
+  success: true;
 }
 

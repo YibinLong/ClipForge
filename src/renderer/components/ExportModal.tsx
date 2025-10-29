@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTimelineStore } from '../stores/timelineStore';
 import { useMediaStore } from '../stores/mediaStore';
-import { cancelExport, onExportProgress, startExportTimeline } from '../utils/ipc';
+import { cancelExport, onExportProgress, startExportTimeline, revealInFolder } from '../utils/ipc';
 import { ExportProgressEvent } from '../../types/ipc';
 
 type Resolution = 'source' | '720p' | '1080p';
@@ -21,6 +21,8 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose }) => {
   const [eta, setEta] = useState<number | undefined>(undefined);
   const [status, setStatus] = useState<'idle' | 'processing' | 'complete' | 'error' | 'cancelled'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [chosenOutputPath, setChosenOutputPath] = useState<string | null>(null);
+  const [didReveal, setDidReveal] = useState(false);
 
   const canStart = useMemo(() => timeline.some((c) => c.trackId === 1), [timeline]);
   const hasAnyCaptions = useMemo(() => media.some((m) => !!m.subtitlesPath), [media]);
@@ -37,6 +39,16 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose }) => {
     }
   }, [open]);
 
+  // Close on Escape key (when not in-flight)
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !inFlight) onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, inFlight, onClose]);
+
   useEffect(() => {
     if (!open) return;
     const unsubscribe = onExportProgress((e: ExportProgressEvent) => {
@@ -48,6 +60,11 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose }) => {
         setProgress(100);
         setEta(0);
         setInFlight(false);
+        // Auto reveal the exported file in folder (best effort)
+        if (chosenOutputPath && !didReveal) {
+          setDidReveal(true);
+          void revealInFolder(chosenOutputPath);
+        }
       } else if (e.status === 'cancelled') {
         setInFlight(false);
       } else if (e.status === 'error') {
@@ -58,7 +75,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose }) => {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [open]);
+  }, [open, chosenOutputPath, didReveal]);
 
   const start = async () => {
     setError(null);
@@ -66,6 +83,8 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose }) => {
     setProgress(0);
     setEta(undefined);
     setInFlight(true);
+    setChosenOutputPath(null);
+    setDidReveal(false);
     
     try {
       const req = {
@@ -83,6 +102,10 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose }) => {
         setError(result.error || 'Failed to start export');
         setStatus('error');
         setInFlight(false);
+      } else {
+        // Remember selected output path for reveal-on-complete
+        const out = (result as { success: true; outputPath?: string }).outputPath;
+        if (out) setChosenOutputPath(out);
       }
     } catch (err) {
       // Handle unexpected errors (e.g., IPC communication failure)
@@ -103,15 +126,6 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose }) => {
       <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-800">Export Timeline</h2>
-          <button
-            className="text-gray-500 hover:text-gray-700"
-            onClick={() => {
-              if (!inFlight) onClose();
-            }}
-            aria-label="Close"
-          >
-            ✕
-          </button>
         </div>
 
         <div className="space-y-4">
@@ -143,18 +157,20 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose }) => {
             </label>
           </div>
 
-          <div className="mt-2">
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div
-                className="bg-indigo-600 h-3 rounded-full transition-all"
-                style={{ width: `${progress}%` }}
-              />
+          {(status === 'processing' || status === 'complete' || inFlight) && (
+            <div className="mt-2">
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div
+                  className="bg-indigo-600 h-3 rounded-full transition-all"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-sm text-gray-600 mt-1">
+                <span>{Math.round(progress)}%</span>
+                <span>{eta !== undefined ? `${Math.max(0, Math.ceil(eta))}s left` : ''}</span>
+              </div>
             </div>
-            <div className="flex justify-between text-sm text-gray-600 mt-1">
-              <span>{Math.round(progress)}%</span>
-              <span>{eta !== undefined ? `${Math.max(0, Math.ceil(eta))}s left` : ''}</span>
-            </div>
-          </div>
+          )}
 
           {error && (
             <div className="text-red-600 text-sm">{error}</div>
