@@ -131,6 +131,7 @@ const App: React.FC = () => {
           />
           <VideoPlayer
             baseSrc={active1.media ? `file://${active1.media.path}` : null}
+            baseSubtitlesPath={active1.media?.subtitlesPath ?? null}
             overlaySrc={active2.media ? `file://${active2.media.path}` : null}
             externalIsPlaying={isPlaying}
             baseExternalTime={active1.clip ? active1.mediaTime : null}

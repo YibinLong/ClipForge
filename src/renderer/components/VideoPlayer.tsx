@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTimelineStore } from '../stores/timelineStore';
+import { loadSrtAsVttUrl } from '../utils/captions';
 
 interface VideoPlayerProps {
   /** Back-compat single source (mapped to baseSrc) */
@@ -7,6 +8,8 @@ interface VideoPlayerProps {
   /** Base (Track 1) source and time */
   baseSrc?: string | null;
   baseExternalTime?: number | null;
+  /** Optional subtitles (SRT) path for base video */
+  baseSubtitlesPath?: string | null;
   /** Overlay (Track 2) source and time */
   overlaySrc?: string | null;
   overlayExternalTime?: number | null;
@@ -23,7 +26,7 @@ function formatTime(seconds: number): string {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, baseSrc, overlaySrc, externalIsPlaying, baseExternalTime, overlayExternalTime, onBaseMediaTimeUpdate }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, baseSrc, baseSubtitlesPath, overlaySrc, externalIsPlaying, baseExternalTime, overlayExternalTime, onBaseMediaTimeUpdate }) => {
   const baseVideoRef = useRef<HTMLVideoElement | null>(null);
   const overlayVideoRef = useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -32,6 +35,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, baseSrc, overlaySrc, ext
   const [volume, setVolume] = useState(1);
   const [hasError, setHasError] = useState<string | null>(null);
   const [audioSource, setAudioSource] = useState<'track1' | 'track2' | 'both'>('track1');
+  const [vttUrl, setVttUrl] = useState<string | null>(null);
   const playTimeline = useTimelineStore((s) => s.play);
   const pauseTimeline = useTimelineStore((s) => s.pause);
 
@@ -60,6 +64,30 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, baseSrc, overlaySrc, ext
       } catch {}
     }
   }, [effectiveBaseSrc, overlaySrc]);
+
+  // Load subtitles (SRT -> VTT) when path changes
+  useEffect(() => {
+    let cancelled = false;
+    let prevUrl: string | null = null;
+    const run = async () => {
+      if (!baseSubtitlesPath) {
+        setVttUrl(null);
+        return;
+      }
+      const url = await loadSrtAsVttUrl(baseSubtitlesPath);
+      if (!cancelled) {
+        prevUrl = url;
+        setVttUrl(url);
+      } else if (url) {
+        URL.revokeObjectURL(url);
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+      if (prevUrl) URL.revokeObjectURL(prevUrl);
+    };
+  }, [baseSubtitlesPath]);
 
   // Attach media event listeners
   useEffect(() => {
@@ -233,6 +261,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, baseSrc, overlaySrc, ext
         {/* Base video (Track 1) */}
         <video ref={baseVideoRef} controls className="w-full h-full">
           {effectiveBaseSrc ? <source src={effectiveBaseSrc} /> : null}
+          {vttUrl ? (
+            <track kind="subtitles" src={vttUrl} default />
+          ) : null}
         </video>
 
         {/* Overlay video (Track 2) */}

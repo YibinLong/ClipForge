@@ -54,6 +54,13 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
   const timelineClips = useTimelineStore((s) => s.clips);
   const mediaClips = useMediaStore((s) => s.clips);
   const [exportOpen, setExportOpen] = useState(false);
+  const [hoverTip, setHoverTip] = useState<{
+    visible: boolean;
+    text: string;
+    x: number;
+    y: number;
+  }>({ visible: false, text: '', x: 0, y: 0 });
+  const [isDraggingClip, setIsDraggingClip] = useState(false);
 
   const pixelsPerSecond = BASE_PX_PER_SEC * zoomLevel;
   // Force static 2-minute timeline regardless of first clip (per request)
@@ -432,6 +439,20 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                     x={x}
                     y={y}
                     draggable={groupDraggable}
+                    clip={{ x: 0, y: 0, width, height: trackHeight - 10 }}
+                    onMouseEnter={(e) => {
+                      if (isDraggingClip) return;
+                      const stage = e.target.getStage();
+                      const ptr = stage?.getPointerPosition();
+                      if (ptr) setHoverTip({ visible: true, text: label, x: ptr.x + 12, y: ptr.y + 12 });
+                    }}
+                    onMouseMove={(e) => {
+                      if (isDraggingClip) return;
+                      const stage = e.target.getStage();
+                      const ptr = stage?.getPointerPosition();
+                      if (ptr && hoverTip.visible) setHoverTip((t) => ({ ...t, x: ptr.x + 12, y: ptr.y + 12 }));
+                    }}
+                    onMouseLeave={() => setHoverTip({ visible: false, text: '', x: 0, y: 0 })}
                     dragBoundFunc={(pos) => {
                       const clampedX = Math.max(0, Math.min(stageWidth - width, pos.x));
                       const trackAreaTopLocal = RULER_HEIGHT + 10;
@@ -446,8 +467,12 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         (e.evt as any).cancelBubble = true;
                       }
+                        setIsDraggingClip(true);
+                        setHoverTip({ visible: false, text: '', x: 0, y: 0 });
                     }}
                     onDragEnd={(e) => {
+                      setIsDraggingClip(false);
+                      setHoverTip({ visible: false, text: '', x: 0, y: 0 });
                       if (isTrimmingRef.current) {
                         // ignore group drag end while trimming
                         return;
@@ -498,6 +523,9 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                       text={label}
                       fontSize={12}
                       fill="#374151"
+                      width={Math.max(0, width - 16)}
+                      wrap={'none'}
+                      ellipsis
                     />
 
                     {/* LEFT Trim Handle - FIXED: Calculates delta from initial position (0) */}
@@ -529,6 +557,8 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                           absX: handleAbsX,
                           absY: absGroupY,
                         });
+                        setIsDraggingClip(true);
+                        setHoverTip({ visible: false, text: '', x: 0, y: 0 });
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         (e.evt as any).cancelBubble = true;
                       }}
@@ -679,6 +709,8 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                           absX: rightEdgeAbsX,
                           absY: absGroupY,
                         });
+                        setIsDraggingClip(true);
+                        setHoverTip({ visible: false, text: '', x: 0, y: 0 });
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         (e.evt as any).cancelBubble = true;
                       }}
@@ -782,6 +814,8 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                         setTimeout(() => {
                           isTrimmingRef.current = false;
                         }, 100);
+                        setIsDraggingClip(false);
+                        setHoverTip({ visible: false, text: '', x: 0, y: 0 });
                         
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         (e.evt as any).cancelBubble = true;
@@ -818,6 +852,32 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                   </Group>
                 );
               })}
+
+              {/* Playhead - draggable group with larger handle for easier interaction */}
+              {/* Hover tooltip for full filename */}
+              {hoverTip.visible ? (
+                <Group x={hoverTip.x} y={hoverTip.y}>
+                  <Rect
+                    x={0}
+                    y={0}
+                    width={Math.min(Math.max(100, hoverTip.text.length * 7), stageWidth - hoverTip.x - 8)}
+                    height={28}
+                    fill="#111827"
+                    opacity={0.95}
+                    cornerRadius={6}
+                    shadowColor={'#000'}
+                    shadowBlur={8}
+                    shadowOpacity={0.25}
+                  />
+                  <Text
+                    x={10}
+                    y={8}
+                    text={hoverTip.text}
+                    fontSize={12}
+                    fill="#ffffff"
+                  />
+                </Group>
+              ) : null}
 
               {/* Playhead - draggable group with larger handle for easier interaction */}
               <Group

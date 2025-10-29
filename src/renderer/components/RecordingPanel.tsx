@@ -26,6 +26,7 @@ const RecordingPanel: React.FC<Props> = ({ onClose }) => {
   const [useSaveAs, setUseSaveAs] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
 
   // Timer
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -120,6 +121,43 @@ const RecordingPanel: React.FC<Props> = ({ onClose }) => {
   useEffect(() => {
     if (mode !== 'webcam') void refreshSources();
   }, [mode, refreshSources]);
+
+  // Live preview: build and attach preview stream when options change (not recording)
+  useEffect(() => {
+    let cancelled = false;
+    const setupPreview = async () => {
+      if (isRecording) return;
+      try {
+        // Teardown any existing preview stream first
+        cleanupStreams();
+
+        let stream: MediaStream | null = null;
+        if (mode === 'screen') {
+          if (!selectedSourceId) return;
+          const res = await setCaptureSource(selectedSourceId);
+          if (isIPCError(res)) return;
+          stream = await buildScreenWithMic();
+        } else if (mode === 'both') {
+          if (!selectedSourceId) return;
+          const res = await setCaptureSource(selectedSourceId);
+          if (isIPCError(res)) return;
+          stream = await buildPiPWithMic();
+        } else {
+          stream = await buildWebcamWithMic();
+        }
+        if (!cancelled && stream) {
+          await attachPreview(stream);
+          setStatus('Preview ready');
+        }
+      } catch {
+        // Ignore preview preparation errors (user may not have granted permissions yet)
+      }
+    };
+    void setupPreview();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, selectedSourceId, selectedMicId, includeWindows, isRecording]);
 
   // Audio meter setup/cleanup
   const startMeter = useCallback((stream: MediaStream) => {
@@ -409,6 +447,7 @@ const RecordingPanel: React.FC<Props> = ({ onClose }) => {
       mr.onresume = () => setStatus('Recording...');
       mr.onstop = async () => {
         setStatus('Finalizing...');
+        setIsFinalizing(true);
         try {
           const blob = new Blob(chunksRef.current, { type: 'video/webm' });
           const arr = await blob.arrayBuffer();
@@ -454,6 +493,7 @@ const RecordingPanel: React.FC<Props> = ({ onClose }) => {
           pauseStartRef.current = null;
           pausedAccumulatedRef.current = 0;
         }
+        setIsFinalizing(false);
       };
       mediaRecorderRef.current = mr;
       mr.start(200);
@@ -478,7 +518,13 @@ const RecordingPanel: React.FC<Props> = ({ onClose }) => {
   };
 
   const stopRecording = () => {
+    if (isFinalizing) return;
     try {
+      // Freeze timer immediately when user presses Stop
+      if (!isPaused) {
+        setIsPaused(true);
+        pauseStartRef.current = Date.now();
+      }
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
       } else {
@@ -520,14 +566,6 @@ const RecordingPanel: React.FC<Props> = ({ onClose }) => {
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-2xl font-bold text-gray-800">Recording Panel</h3>
-          <button
-            onClick={() => { if (!isRecording) onClose(); }}
-            className="text-gray-500 hover:text-gray-700"
-            title="Close"
-            disabled={isRecording}
-          >
-            ✕
-          </button>
         </div>
 
         {error && (
@@ -607,8 +645,16 @@ const RecordingPanel: React.FC<Props> = ({ onClose }) => {
                       <input type="radio" name="source" value={s.id} checked={selectedSourceId === s.id} onChange={() => setSelectedSourceId(s.id)} disabled={isRecording} />
                       <img src={s.thumbnailDataUrl} alt={s.name} className="w-28 h-16 object-cover rounded border" />
                       <div className="flex-1">
-                        <div className="font-medium text-gray-800">{s.name}</div>
-                        <div className="text-xs text-gray-500">{s.id}</div>
+                        <div className="font-medium text-gray-800">{(function pretty() {
+                          // Friendly name: e.g., "Screen 1" instead of "screen:1:0"
+                          if (s.id.startsWith('screen:')) {
+                            const m = s.id.match(/^screen:(\d+):/);
+                            if (m) return `Screen ${m[1]}`;
+                            return 'Screen';
+                          }
+                          // Windows: just show the window title (s.name)
+                          return s.name || 'Window';
+                        })()}</div>
                       </div>
                     </label>
                   ))}
@@ -622,7 +668,7 @@ const RecordingPanel: React.FC<Props> = ({ onClose }) => {
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input type="checkbox" checked={useSaveAs} onChange={(e) => setUseSaveAs(e.target.checked)} disabled={isRecording} />
-                Save As...
+                Choose save location after recording
               </label>
             </div>
 
@@ -633,7 +679,16 @@ const RecordingPanel: React.FC<Props> = ({ onClose }) => {
           {/* Right: preview */}
           <div>
             <div className="mb-2 font-semibold text-gray-700">Preview</div>
-            <video ref={previewRef} className="w-full aspect-video bg-black rounded" muted playsInline />
+            <div className="relative">
+              <video ref={previewRef} className="block mx-auto max-w-full max-h-80 w-auto h-auto rounded object-contain bg-transparent" muted playsInline />
+              {(isFinalizing || status === 'Done') && (
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded">
+                  <div className="text-white text-lg font-semibold">
+                    {isFinalizing ? 'Finalizing…' : 'Done'}
+                  </div>
+                </div>
+              )}
+            </div>
             {status === 'Done' && (
               <div className="mt-3">
                 <button
@@ -656,12 +711,12 @@ const RecordingPanel: React.FC<Props> = ({ onClose }) => {
           ) : (
             <div className="flex items-center gap-3">
               {!isPaused ? (
-                <button onClick={pauseRecording} className="px-4 py-2 rounded text-white bg-amber-600 hover:bg-amber-700">Pause</button>
+                <button onClick={pauseRecording} className="px-4 py-2 rounded text-white bg-amber-600 hover:bg-amber-700" disabled={isFinalizing}>Pause</button>
               ) : (
-                <button onClick={resumeRecording} className="px-4 py-2 rounded text-white bg-blue-600 hover:bg-blue-700">Resume</button>
+                <button onClick={resumeRecording} className="px-4 py-2 rounded text-white bg-blue-600 hover:bg-blue-700" disabled={isFinalizing}>Resume</button>
               )}
               <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" title="Recording" />
-              <button onClick={stopRecording} className="px-4 py-2 rounded text-white bg-red-600 hover:bg-red-700">Stop Recording</button>
+              <button onClick={stopRecording} className="px-4 py-2 rounded text-white bg-red-600 hover:bg-red-700 disabled:opacity-60" disabled={isFinalizing}>Stop Recording</button>
             </div>
           )}
         </div>
