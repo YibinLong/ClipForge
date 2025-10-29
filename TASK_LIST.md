@@ -587,6 +587,90 @@
 
 ---
 
+## **PHASE 7.6: AI-POWERED AUTO CAPTIONS** ⬜
+
+### **Epic 7.6: AI Auto-Caption Generation with OpenAI Whisper** ⬜
+
+**Story:** Automatically generate and burn subtitles into exported videos using OpenAI's Whisper API for transcription
+
+**Prerequisites:** 
+- Add OpenAI API key to `.env` file: `OPENAI_API_KEY=sk-...`
+- Install OpenAI SDK: `npm install openai@^4.0.0`
+- Add to `env.example`: `# OPENAI_API_KEY=your_api_key_here`
+
+**Architecture Overview:**
+1. Extract audio from video → Send to Whisper API → Generate timestamped transcript
+2. Convert transcript to SRT subtitle format
+3. Store SRT file in userData/subtitles/ directory
+4. Burn subtitles into video during export using FFmpeg subtitle filter
+
+---
+
+- ⬜ **Task 7.6.1:** Install OpenAI SDK: `npm install openai@^4.0.0`
+- ⬜ **Task 7.6.2:** Add `OPENAI_API_KEY` to `.env` file (user must add their own key)
+- ⬜ **Task 7.6.3:** Update `env.example` with `# OPENAI_API_KEY=your_api_key_here` comment
+- ⬜ **Task 7.6.4:** Create `src/types/subtitles.ts` with interfaces (SubtitleSegment, SubtitleData)
+- ⬜ **Task 7.6.5:** Add `subtitlesPath?: string` to MediaClip interface in `src/types/media.ts`
+- ⬜ **Task 7.6.6:** Create `ensureSubtitlesDirectory()` function in `src/main/services/ffmpeg.ts`
+- ⬜ **Task 7.6.7:** Create `extractAudioToWav(videoPath, outputWavPath)` function in ffmpeg.ts
+- ⬜ **Task 7.6.8:** Configure WAV export: mono, 16kHz, PCM format (optimal for Whisper)
+- ⬜ **Task 7.6.9:** Test audio extraction with sample video file
+- ⬜ **Task 7.6.10:** Create `src/main/services/transcription.ts` service module
+- ⬜ **Task 7.6.11:** Initialize OpenAI client with API key from environment variable
+- ⬜ **Task 7.6.12:** Implement `transcribeAudio(audioPath)` using Whisper API
+- ⬜ **Task 7.6.13:** Configure Whisper: model="whisper-1", response_format="verbose_json"
+- ⬜ **Task 7.6.14:** Request word-level or segment-level timestamps
+- ⬜ **Task 7.6.15:** Handle API errors (invalid key, rate limits, file size limits)
+- ⬜ **Task 7.6.16:** Implement `generateSRTFile(segments, outputPath)` function
+- ⬜ **Task 7.6.17:** Format timestamps as SRT format (HH:MM:SS,mmm)
+- ⬜ **Task 7.6.18:** Number subtitle entries sequentially (1, 2, 3...)
+- ⬜ **Task 7.6.19:** Write SRT content to file in userData/subtitles/
+- ⬜ **Task 7.6.20:** Create IPC handler `generate-captions` in `src/main/ipc/handlers.ts`
+- ⬜ **Task 7.6.21:** Handler workflow: extract audio → transcribe → generate SRT → return SRT path
+- ⬜ **Task 7.6.22:** Add progress callbacks (extracting audio, transcribing, generating file)
+- ⬜ **Task 7.6.23:** Clean up temporary WAV file after transcription
+- ⬜ **Task 7.6.24:** Update `generate-captions` IPC type definitions in `src/types/ipc.ts`
+- ⬜ **Task 7.6.25:** Expose `generateCaptions(mediaId)` in preload.ts contextBridge
+- ⬜ **Task 7.6.26:** Add "Generate Captions" button to MediaLibrary component
+- ⬜ **Task 7.6.27:** Show button on each media clip item (icon or text button)
+- ⬜ **Task 7.6.28:** Disable button if clip already has captions
+- ⬜ **Task 7.6.29:** Show loading spinner on button during caption generation
+- ⬜ **Task 7.6.30:** Display progress text ("Extracting audio...", "Transcribing...")
+- ⬜ **Task 7.6.31:** Call `generateCaptions` IPC when button clicked
+- ⬜ **Task 7.6.32:** Update MediaClip in store with subtitlesPath after success
+- ⬜ **Task 7.6.33:** Show success notification: "Captions generated successfully"
+- ⬜ **Task 7.6.34:** Show error notification if generation fails (with helpful message)
+- ⬜ **Task 7.6.35:** Add captions indicator badge to clips with subtitles (e.g., "CC" icon)
+- ⬜ **Task 7.6.36:** Update ExportTimelineOptions interface to include `enableSubtitles: boolean`
+- ⬜ **Task 7.6.37:** Add "Include Captions" checkbox to ExportModal component
+- ⬜ **Task 7.6.38:** Default checkbox to checked (captions on by default)
+- ⬜ **Task 7.6.39:** Disable checkbox if no clips have captions
+- ⬜ **Task 7.6.40:** Pass enableSubtitles flag to export IPC handler
+- ⬜ **Task 7.6.41:** Modify `buildGraph()` in export.ts to accept subtitles parameter
+- ⬜ **Task 7.6.42:** For each clip with subtitlesPath, add FFmpeg subtitle filter
+- ⬜ **Task 7.6.43:** Use `subtitles` filter: `[vf]subtitles=${srtPath}[vfs]`
+- ⬜ **Task 7.6.44:** Handle subtitle timing offset based on clip trimStart
+- ⬜ **Task 7.6.45:** Escape SRT file path for FFmpeg (handle spaces/special chars)
+- ⬜ **Task 7.6.46:** Test subtitle filter doesn't break multi-clip export
+- ⬜ **Task 7.6.47:** Test subtitle filter works with PiP overlay (Track 2)
+- ⬜ **Task 7.6.48:** Add subtitle styling options (optional: font, size, color)
+- ⬜ **Task 7.6.49:** Test caption generation with 30-second clip
+- ⬜ **Task 7.6.50:** Test caption generation with 5-minute clip
+- ⬜ **Task 7.6.51:** Test caption generation with no speech (silence)
+- ⬜ **Task 7.6.52:** Test export with captions enabled
+- ⬜ **Task 7.6.53:** Test export with captions disabled
+- ⬜ **Task 7.6.54:** Test export with mixed clips (some with captions, some without)
+- ⬜ **Task 7.6.55:** Verify exported video shows captions burned-in
+- ⬜ **Task 7.6.56:** Test captions sync correctly with trimmed clips
+- ⬜ **Task 7.6.57:** Handle edge case: Whisper API returns empty transcript
+- ⬜ **Task 7.6.58:** Handle edge case: Video file larger than 25MB audio limit
+- ⬜ **Task 7.6.59:** Add cost estimation tooltip (e.g., "$0.006/min of audio")
+- ⬜ **Task 7.6.60:** Document OpenAI API key setup in README.md
+
+**Acceptance:** Can click "Generate Captions" on any video clip, Whisper API transcribes audio, SRT file generated and stored, captions appear in exported video when enabled, clips with captions show indicator badge. ⬜
+
+---
+
 ## **PHASE 8: POLISH & ADVANCED FEATURES** ⬜
 
 ### **Epic 8.1: Keyboard Shortcuts** ⬜
