@@ -547,43 +547,43 @@
 
 ---
 
-### **Epic 7.4: Audio Capture** ⬜
+### **Epic 7.4: Audio Capture** ✅
 
 **Story:** Ensure all recordings capture microphone audio with video
 
-- ⬜ **Task 7.4.1:** Request audio track in getUserMedia calls
-- ⬜ **Task 7.4.2:** Test audio is included in screen recordings
-- ⬜ **Task 7.4.3:** Test audio is included in webcam recordings
-- ⬜ **Task 7.4.4:** Test audio is included in PiP recordings
-- ⬜ **Task 7.4.5:** Add microphone device selection dropdown
-- ⬜ **Task 7.4.6:** Implement audio level meter during recording
-- ⬜ **Task 7.4.7:** Show visual feedback when audio is being captured
-- ⬜ **Task 7.4.8:** Handle no microphone detected (allow video-only)
-- ⬜ **Task 7.4.9:** Test audio sync with video in recordings
+- ✅ **Task 7.4.1:** Request audio track in getUserMedia calls
+- ✅ **Task 7.4.2:** Test audio is included in screen recordings
+- ✅ **Task 7.4.3:** Test audio is included in webcam recordings
+- ✅ **Task 7.4.4:** Test audio is included in PiP recordings
+- ✅ **Task 7.4.5:** Add microphone device selection dropdown
+- ✅ **Task 7.4.6:** Implement audio level meter during recording
+- ✅ **Task 7.4.7:** Show visual feedback when audio is being captured
+- ✅ **Task 7.4.8:** Handle no microphone detected (allow video-only)
+- ✅ **Task 7.4.9:** Test audio sync with video in recordings
 
-**Acceptance:** All recording types capture audio from microphone, audio plays back in sync with video, can select audio input device. ⬜
+**Acceptance:** All recording types capture audio from microphone, audio plays back in sync with video, can select audio input device. ✅
 
 ---
 
-### **Epic 7.5: Recording UI & Controls** ⬜
+### **Epic 7.5: Recording UI & Controls** ✅
 
 **Story:** Create intuitive recording interface with start/stop/pause controls
 
-- ⬜ **Task 7.5.1:** Create `RecordingPanel` component with all recording options
-- ⬜ **Task 7.5.2:** Add radio buttons for recording type (Screen, Webcam, Both)
-- ⬜ **Task 7.5.3:** Add Start Recording button (large, prominent)
-- ⬜ **Task 7.5.4:** Disable source selection during recording
-- ⬜ **Task 7.5.5:** Show recording timer (MM:SS) during active recording
-- ⬜ **Task 7.5.6:** Add Stop Recording button (replaces Start when recording)
-- ⬜ **Task 7.5.7:** Add Pause/Resume button (optional for MVP)
-- ⬜ **Task 7.5.8:** Show recording indicator (red dot or pulsing circle)
-- ⬜ **Task 7.5.9:** Display live preview of what's being recorded
-- ⬜ **Task 7.5.10:** Show notification when recording starts
-- ⬜ **Task 7.5.11:** Show notification when recording saved
-- ⬜ **Task 7.5.12:** Auto-scroll to new recording in media library
-- ⬜ **Task 7.5.13:** Test complete recording workflow (select → record → stop → appears in library)
+- ✅ **Task 7.5.1:** Create `RecordingPanel` component with all recording options
+- ✅ **Task 7.5.2:** Add radio buttons for recording type (Screen, Webcam, Both)
+- ✅ **Task 7.5.3:** Add Start Recording button (large, prominent)
+- ✅ **Task 7.5.4:** Disable source selection during recording
+- ✅ **Task 7.5.5:** Show recording timer (MM:SS) during active recording
+- ✅ **Task 7.5.6:** Add Stop Recording button (replaces Start when recording)
+- ✅ **Task 7.5.7:** Add Pause/Resume button (optional for MVP)
+- ✅ **Task 7.5.8:** Show recording indicator (red dot or pulsing circle)
+- ✅ **Task 7.5.9:** Display live preview of what's being recorded
+- ✅ **Task 7.5.10:** Show notification when recording starts
+- ✅ **Task 7.5.11:** Show notification when recording saved
+- ✅ **Task 7.5.12:** Auto-scroll to new recording in media library
+- ✅ **Task 7.5.13:** Test complete recording workflow (select → record → stop → appears in library)
 
-**Acceptance:** Recording UI is intuitive and clear, shows recording status, timer updates during recording, finished recordings auto-appear in media library. ⬜
+**Acceptance:** Recording UI is intuitive and clear, shows recording status, timer updates during recording, finished recordings auto-appear in media library. ✅
 
 ---
 
