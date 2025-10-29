@@ -146,7 +146,7 @@ const RecordingPanel: React.FC<Props> = ({ onClose }) => {
         meterRafRef.current = requestAnimationFrame(tick);
       };
       tick();
-    } catch {
+    } catch (err) {
       // Ignore meter setup failures
     }
   }, []);
@@ -158,7 +158,11 @@ const RecordingPanel: React.FC<Props> = ({ onClose }) => {
     }
     if (analyserRef.current) analyserRef.current.disconnect();
     if (audioCtxRef.current) {
-      try { /* avoid closing shared context to prevent errors */ } catch {}
+      try { 
+        // Avoid closing shared context to prevent errors
+      } catch (err) {
+        // Ignore errors
+      }
     }
     setMeterLevel(0);
   }, []);
@@ -202,11 +206,19 @@ const RecordingPanel: React.FC<Props> = ({ onClose }) => {
     }
     // Clear helper videos
     if (screenVideoElRef.current) {
-      try { screenVideoElRef.current.srcObject = null; } catch {}
+      try { 
+        screenVideoElRef.current.srcObject = null; 
+      } catch (err) {
+        // Ignore errors
+      }
       screenVideoElRef.current = null;
     }
     if (camVideoElRef.current) {
-      try { camVideoElRef.current.srcObject = null; } catch {}
+      try { 
+        camVideoElRef.current.srcObject = null; 
+      } catch (err) {
+        // Ignore errors
+      }
       camVideoElRef.current = null;
     }
 
@@ -218,7 +230,11 @@ const RecordingPanel: React.FC<Props> = ({ onClose }) => {
     outStreamRef.current = stream;
     if (previewRef.current) {
       previewRef.current.srcObject = stream;
-      try { await previewRef.current.play(); } catch {}
+      try { 
+        await previewRef.current.play(); 
+      } catch (err) {
+        // Ignore play errors
+      }
     }
   };
 
@@ -311,7 +327,7 @@ const RecordingPanel: React.FC<Props> = ({ onClose }) => {
         const dx = cw - drawW - margin;
         const dy = ch - drawH - margin;
         ctx.drawImage(camVideoElRef.current, dx, dy, drawW, drawH);
-      } catch {
+      } catch (err) {
         // Ignore draw errors during teardown
       }
       rafIdRef.current = requestAnimationFrame(draw);
