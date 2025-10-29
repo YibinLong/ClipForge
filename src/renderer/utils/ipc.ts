@@ -40,6 +40,8 @@ import {
   GenerateCaptionsRequest,
   GenerateCaptionsResponse,
   GenerateCaptionsProgressEvent,
+  ReadTextFileResponse,
+  RevealInFolderResponse,
 } from '../../types/ipc';
 import { MediaClip } from '../../types/media';
 
@@ -180,5 +182,26 @@ export function onGenerateCaptionsProgress(
     IPC_CHANNELS.GENERATE_CAPTIONS_PROGRESS,
     (...args: unknown[]) => cb(args[0] as GenerateCaptionsProgressEvent)
   );
+}
+
+// ============================================================================
+// FS Bridge (Read Text)
+// =========================================================================
+
+export async function readTextFile(
+  filePath: string,
+  encoding: BufferEncoding = 'utf8'
+): Promise<ReadTextFileResponse | IPCErrorResponse> {
+  return window.electron.invoke(
+    IPC_CHANNELS.READ_TEXT_FILE,
+    { path: filePath, encoding }
+  ) as Promise<ReadTextFileResponse | IPCErrorResponse>;
+}
+
+export async function revealInFolder(filePath: string): Promise<RevealInFolderResponse | IPCErrorResponse> {
+  return window.electron.invoke(
+    IPC_CHANNELS.REVEAL_IN_FOLDER,
+    { path: filePath }
+  ) as Promise<RevealInFolderResponse | IPCErrorResponse>;
 }
 
