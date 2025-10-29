@@ -1,6 +1,7 @@
 import ffmpeg from 'fluent-ffmpeg';
 import * as fs from 'fs';
 import * as path from 'path';
+import { app } from 'electron';
 import './ffmpeg';
 import { MediaClip } from '../../types/media';
 import { TimelineClip } from '../../types/timeline';
@@ -328,7 +329,8 @@ export function exportTimelineWithOverlay(
   if (!baseClips.length) return Promise.reject(new Error('Timeline has no clips on Track 1'));
 
   // Prepare temp directory for adjusted SRTs
-  const tempDir = path.join(process.cwd(), '.webpack', 'tmp', `srt-${Date.now()}-${Math.random().toString(36).slice(2,8)}`);
+  // Use Electron's system temp directory (works in both dev and production)
+  const tempDir = path.join(app.getPath('temp'), 'clipforge-srt', `${Date.now()}-${Math.random().toString(36).slice(2,8)}`);
   try { fs.mkdirSync(tempDir, { recursive: true }); } catch {}
 
   const makeTempSrtForWindow = (originalSrtPath: string, start: number, end: number): string | null => {

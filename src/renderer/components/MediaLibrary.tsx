@@ -27,6 +27,7 @@ import React, { useEffect, useState } from 'react';
 import { isIPCError, ImportFileResponse, IPC_CHANNELS } from '../../types/ipc';
 import { MediaClip } from '../../types/media';
 import { useMediaStore } from '../stores/mediaStore';
+import { generateCaptions, onGenerateCaptionsProgress } from '../utils/ipc';
 import RecordingPanel from './RecordingPanel';
 
 interface MediaLibraryProps {
@@ -92,6 +93,19 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
 
   // Unified recording panel
   const [showRecordingPanel, setShowRecordingPanel] = useState(false);
+
+  // Captions generation state (track which clipIds are generating)
+  const [generating, setGenerating] = useState<Set<string>>(new Set());
+
+  // Subscribe to captions progress (optional logging/UI hooks)
+  useEffect(() => {
+    const unsub = onGenerateCaptionsProgress((e) => {
+      try {
+        console.log('[CAPTIONS][PROGRESS]', e);
+      } catch {}
+    });
+    return () => { try { if (unsub) unsub(); } catch {} };
+  }, []);
 
   // Optional: auto-scroll to latest item when clips change
   const listRef = React.useRef<HTMLDivElement | null>(null);
@@ -541,6 +555,44 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
                     <p className="text-xs text-gray-400 truncate mt-2" title={clip.path}>
                       {clip.path}
                     </p>
+                <div className="mt-2 flex items-center gap-2">
+                  {clip.subtitlesPath ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded bg-green-100 text-green-700 border border-green-200" title={clip.subtitlesPath}>
+                      <span>CC</span>
+                      <span>Captions</span>
+                    </span>
+                  ) : null}
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (generating.has(clip.id) || clip.subtitlesPath) return;
+                      setGenerating((prev) => new Set(prev).add(clip.id));
+                      try {
+                        const res = await generateCaptions(clip.id, clip.path);
+                        if (isIPCError(res)) {
+                          alert(`Caption generation failed: ${res.error}`);
+                        } else {
+                          useMediaStore.getState().updateClip(clip.id, { subtitlesPath: res.srtPath });
+                        }
+                      } catch (err) {
+                        alert(`Caption generation error: ${err instanceof Error ? err.message : String(err)}`);
+                      } finally {
+                        setGenerating((prev) => { const n = new Set(prev); n.delete(clip.id); return n; });
+                      }
+                    }}
+                    disabled={generating.has(clip.id) || !!clip.subtitlesPath}
+                    className={`text-xs px-3 py-1 rounded border transition-colors ${
+                      clip.subtitlesPath
+                        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                        : generating.has(clip.id)
+                          ? 'bg-blue-100 text-blue-600 border-blue-200 cursor-wait'
+                          : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50'
+                    }`}
+                    title={clip.subtitlesPath ? 'Captions already generated' : 'Generate captions (uses OpenAI)'}
+                  >
+                    {generating.has(clip.id) ? 'Generating…' : 'Generate Captions'}
+                  </button>
+                </div>
                   </div>
                   
                   {/* Remove button */}
