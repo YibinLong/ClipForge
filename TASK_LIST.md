@@ -506,23 +506,23 @@
 
 ---
 
-### **Epic 7.2: Webcam Recording** ⬜
+### **Epic 7.2: Webcam Recording** ✅
 
 **Story:** Enable webcam recording using getUserMedia
 
-- ⬜ **Task 7.2.1:** Create `WebcamRecorder` component
-- ⬜ **Task 7.2.2:** Use getUserMedia to request video from webcam
-- ⬜ **Task 7.2.3:** Request audio from microphone simultaneously
-- ⬜ **Task 7.2.4:** Display live webcam preview in UI
-- ⬜ **Task 7.2.5:** Add device selection dropdown (if multiple cameras)
-- ⬜ **Task 7.2.6:** Create MediaRecorder for webcam stream
-- ⬜ **Task 7.2.7:** Implement start/stop recording
-- ⬜ **Task 7.2.8:** Save webcam recording to userData/recordings/
-- ⬜ **Task 7.2.9:** Auto-add to media library
-- ⬜ **Task 7.2.10:** Handle permission denied errors (show instructions)
-- ⬜ **Task 7.2.11:** Test webcam recording with audio
+- ✅ **Task 7.2.1:** Create `WebcamRecorder` component
+- ✅ **Task 7.2.2:** Use getUserMedia to request video from webcam
+- ✅ **Task 7.2.3:** Request audio from microphone simultaneously
+- ✅ **Task 7.2.4:** Display live webcam preview in UI
+- ✅ **Task 7.2.5:** Add device selection dropdown (if multiple cameras)
+- ✅ **Task 7.2.6:** Create MediaRecorder for webcam stream
+- ✅ **Task 7.2.7:** Implement start/stop recording
+- ✅ **Task 7.2.8:** Save webcam recording to userData/recordings/
+- ✅ **Task 7.2.9:** Auto-add to media library
+- ✅ **Task 7.2.10:** Handle permission denied errors (show instructions)
+- ✅ **Task 7.2.11:** Test webcam recording with audio
 
-**Acceptance:** Can record webcam with audio, see live preview, save recording, file appears in media library. ⬜
+**Acceptance:** Can record webcam with audio, see live preview, save recording, file appears in media library. ✅
 
 ---
 
