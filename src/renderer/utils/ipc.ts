@@ -39,6 +39,9 @@ import {
   TranscodeWebmToMp4Response,
   ChooseRecordingOutputResponse,
   OpenRecordingsFolderResponse,
+  GenerateCaptionsRequest,
+  GenerateCaptionsResponse,
+  GenerateCaptionsProgressEvent,
 } from '../../types/ipc';
 import { MediaClip } from '../../types/media';
 
@@ -185,5 +188,29 @@ export async function openRecordingsFolder(): Promise<OpenRecordingsFolderRespon
   return window.electron.invoke(
     IPC_CHANNELS.OPEN_RECORDINGS_FOLDER
   ) as Promise<OpenRecordingsFolderResponse | IPCErrorResponse>;
+}
+
+// ============================================================================
+// Captions (Epic 7.6)
+// ============================================================================
+
+export async function generateCaptions(
+  clipId: string,
+  videoPath: string
+): Promise<GenerateCaptionsResponse | IPCErrorResponse> {
+  const req: GenerateCaptionsRequest = { clipId, videoPath };
+  return window.electron.invoke(
+    IPC_CHANNELS.GENERATE_CAPTIONS,
+    req
+  ) as Promise<GenerateCaptionsResponse | IPCErrorResponse>;
+}
+
+export function onGenerateCaptionsProgress(
+  cb: (e: GenerateCaptionsProgressEvent) => void
+): () => void {
+  return window.electron.on(
+    IPC_CHANNELS.GENERATE_CAPTIONS_PROGRESS,
+    (...args: unknown[]) => cb(args[0] as GenerateCaptionsProgressEvent)
+  );
 }
 

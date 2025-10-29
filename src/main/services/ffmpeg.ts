@@ -154,6 +154,19 @@ export function ensureThumbnailsDirectory(): string {
 }
 
 /**
+ * Ensure the subtitles directory exists (for generated SRT files)
+ */
+export function ensureSubtitlesDirectory(): string {
+  const userDataPath = app.getPath('userData');
+  const subtitlesDir = path.join(userDataPath, 'subtitles');
+  if (!fs.existsSync(subtitlesDir)) {
+    console.log('[FFMPEG] Creating subtitles directory:', subtitlesDir);
+    fs.mkdirSync(subtitlesDir, { recursive: true });
+  }
+  return subtitlesDir;
+}
+
+/**
  * Extract video metadata using FFprobe
  * 
  * Uses fluent-ffmpeg's ffprobe wrapper to extract:
@@ -372,6 +385,33 @@ export function transcodeWebmToMp4(inputPath: string, outputPath: string): Promi
         .on('end', () => resolve())
         .on('error', (err) => reject(err))
         .save(outputPath);
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+/**
+ * Extract audio track from a video into WAV (mono, 16kHz, PCM s16le)
+ * Optimized for transcription models.
+ */
+export function extractAudioToWav(inputVideoPath: string, outputWavPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    try {
+      const outDir = path.dirname(outputWavPath);
+      if (!fs.existsSync(outDir)) {
+        fs.mkdirSync(outDir, { recursive: true });
+      }
+
+      ffmpeg(inputVideoPath)
+        .noVideo()
+        .audioChannels(1)
+        .audioFrequency(16000)
+        .audioCodec('pcm_s16le')
+        .format('wav')
+        .on('end', () => resolve())
+        .on('error', (err) => reject(err))
+        .save(outputWavPath);
     } catch (e) {
       reject(e);
     }

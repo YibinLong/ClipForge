@@ -1,7 +1,11 @@
 import ffmpeg from 'fluent-ffmpeg';
+import * as fs from 'fs';
+import * as path from 'path';
+import { app } from 'electron';
 import './ffmpeg';
 import { MediaClip } from '../../types/media';
 import { TimelineClip } from '../../types/timeline';
+import { parseSRT, filterAndOffsetSegments } from './transcription';
 
 export function exportSingleClip(
   sourcePath: string,
@@ -55,6 +59,7 @@ export interface ExportTimelineOptions {
   media: MediaClip[];
   resolution: ExportResolution;
   outputPath: string;
+  enableSubtitles?: boolean;
 }
 
 let activeJob: { jobId: string; cmd: ffmpeg.FfmpegCommand; outputPath: string } | null = null;
@@ -102,8 +107,10 @@ function buildGraph(
   baseClips: TimelineClip[],
   overlayClips: TimelineClip[],
   media: MediaClip[],
-  resolution: ExportResolution
-): { inputs: string[]; filters: string[]; mapVideo: string; mapAudio: string; totalDuration: number } {
+  resolution: ExportResolution,
+  enableSubtitles: boolean,
+  makeTempSrtForWindow: (originalSrtPath: string, start: number, end: number) => string | null
+): { inputs: string[]; filters: string[]; mapVideo: string; mapAudio: string; totalDuration: number; tempSrtPaths: string[] } {
   // Deduplicate inputs by file path and map to input indices
   const uniquePaths: string[] = [];
   const pathToIndex = new Map<string, number>();
@@ -126,6 +133,7 @@ function buildGraph(
   const concatInputs: string[] = [];
   let totalDuration = 0;
   const overlayW = pickOverlayWidth(resolution);
+  const tempSrtPaths: string[] = [];
 
   // Determine working target dimensions for all segments BEFORE concat
   let targetW = 1280;
@@ -255,6 +263,22 @@ function buildGraph(
     // Store for later normalization
     const vBeforeNormalize = vOutLabel;
 
+    // Apply subtitles if enabled and available for this base clip's media
+    if (enableSubtitles) {
+      const m = baseMedia;
+      if (m?.subtitlesPath && fs.existsSync(m.subtitlesPath)) {
+        const srtPath = makeTempSrtForWindow(m.subtitlesPath, base.trimStart, base.trimEnd);
+        if (srtPath) {
+          tempSrtPaths.push(srtPath);
+          const vsub = `vsub${i}`;
+          filters.push(
+            `[${vOutLabel}]subtitles=${escapeFFmpegPathForFilter(srtPath)}[${vsub}]`
+          );
+          vOutLabel = vsub;
+        }
+      }
+    }
+
     // Normalize video to target dimensions and pixel format; unify fps to 30
     const vs = `vs${i}`;
     filters.push(
@@ -291,20 +315,49 @@ function buildGraph(
   filters.push(`[${vout}]format=yuv420p[vf]`);
   mapVideo = `[vf]`;
 
-  return { inputs: uniquePaths, filters, mapVideo, mapAudio, totalDuration };
+  return { inputs: uniquePaths, filters, mapVideo, mapAudio, totalDuration, tempSrtPaths };
 }
 
 export function exportTimelineWithOverlay(
   opts: ExportTimelineOptions,
   cbs: ExportCallbacks = {}
 ): Promise<void> {
-  const { timeline, media, resolution, outputPath } = opts;
+  const { timeline, media, resolution, outputPath, enableSubtitles } = opts;
   const baseClips = [...timeline.filter((c) => c.trackId === 1)].sort((a, b) => a.startTime - b.startTime);
   const overlayClips = [...timeline.filter((c) => c.trackId === 2)].sort((a, b) => a.startTime - b.startTime);
 
   if (!baseClips.length) return Promise.reject(new Error('Timeline has no clips on Track 1'));
 
-  const { inputs, filters, mapVideo, mapAudio, totalDuration } = buildGraph(baseClips, overlayClips, media, resolution);
+  // Prepare temp directory for adjusted SRTs
+  // Use Electron's system temp directory (works in both dev and production)
+  const tempDir = path.join(app.getPath('temp'), 'clipforge-srt', `${Date.now()}-${Math.random().toString(36).slice(2,8)}`);
+  try { fs.mkdirSync(tempDir, { recursive: true }); } catch {}
+
+  const makeTempSrtForWindow = (originalSrtPath: string, start: number, end: number): string | null => {
+    try {
+      const content = fs.readFileSync(originalSrtPath, 'utf8');
+      const segs = parseSRT(content);
+      const trimmed = filterAndOffsetSegments(segs, start, end);
+      if (trimmed.length === 0) return null;
+      const outPath = path.join(tempDir, `${Math.random().toString(36).slice(2,10)}.srt`);
+      const s = trimmed
+        .map((seg, idx) => `${idx + 1}\n${toSrtTimestamp(seg.start)} --> ${toSrtTimestamp(Math.max(seg.end, seg.start + 0.5))}\n${seg.text}\n`)
+        .join('\n');
+      fs.writeFileSync(outPath, s, 'utf8');
+      return outPath;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const { inputs, filters, mapVideo, mapAudio, totalDuration, tempSrtPaths } = buildGraph(
+    baseClips,
+    overlayClips,
+    media,
+    resolution,
+    !!enableSubtitles,
+    makeTempSrtForWindow
+  );
 
   return new Promise((resolve, reject) => {
     try {
@@ -335,6 +388,13 @@ export function exportTimelineWithOverlay(
           if (cbs.onProgress) cbs.onProgress(seconds);
         })
         .on('end', () => {
+          // Cleanup temp SRTs
+          try {
+            for (const p of tempSrtPaths) {
+              try { fs.existsSync(p) && fs.unlinkSync(p); } catch {}
+            }
+            try { fs.existsSync(tempDir) && fs.rmdirSync(tempDir); } catch {}
+          } catch {}
           if (cbs.onEnd) cbs.onEnd();
           activeJob = null;
           resolve();
@@ -347,6 +407,12 @@ export function exportTimelineWithOverlay(
             activeJob = null;
             // Delete partial file best-effort
             try { require('fs').existsSync(outputPath) && require('fs').unlinkSync(outputPath); } catch {}
+            try {
+              for (const p of tempSrtPaths) {
+                try { fs.existsSync(p) && fs.unlinkSync(p); } catch {}
+              }
+              try { fs.existsSync(tempDir) && fs.rmdirSync(tempDir); } catch {}
+            } catch {}
             reject(new Error('Export cancelled'));
             return;
           }
@@ -361,6 +427,23 @@ export function exportTimelineWithOverlay(
       reject(e as Error);
     }
   });
+}
+
+// Helpers
+function escapeFFmpegPathForFilter(p: string): string {
+  // Wrap in single quotes and escape existing single quotes
+  const escaped = p.replace(/'/g, "\\'");
+  return `'${escaped}'`;
+}
+
+function toSrtTimestamp(sec: number): string {
+  const ms = Math.max(0, Math.round(sec * 1000));
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  const mm = ms % 1000;
+  const pad = (n: number, w = 2) => String(n).padStart(w, '0');
+  return `${pad(h)}:${pad(m)}:${pad(s)},${pad(mm, 3)}`;
 }
 
 

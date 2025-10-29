@@ -15,6 +15,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose }) => {
   const timeline = useTimelineStore((s) => s.clips);
   const media = useMediaStore((s) => s.clips);
   const [resolution, setResolution] = useState<Resolution>('1080p');
+  const [enableSubtitles, setEnableSubtitles] = useState<boolean>(true);
   const [inFlight, setInFlight] = useState(false);
   const [progress, setProgress] = useState(0);
   const [eta, setEta] = useState<number | undefined>(undefined);
@@ -22,6 +23,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose }) => {
   const [error, setError] = useState<string | null>(null);
 
   const canStart = useMemo(() => timeline.some((c) => c.trackId === 1), [timeline]);
+  const hasAnyCaptions = useMemo(() => media.some((m) => !!m.subtitlesPath), [media]);
 
   // Reset all state when modal opens
   useEffect(() => {
@@ -31,6 +33,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose }) => {
       setEta(undefined);
       setError(null);
       setInFlight(false);
+      setEnableSubtitles(true);
     }
   }, [open]);
 
@@ -70,6 +73,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose }) => {
         media,
         trackId: 1,
         resolution,
+        enableSubtitles,
         suggestedName: 'timeline-export',
       } as const;
       const result = await startExportTimeline(req);
@@ -123,6 +127,20 @@ const ExportModal: React.FC<ExportModalProps> = ({ open, onClose }) => {
               <option value="720p">720p (1280x720)</option>
               <option value="1080p">1080p (1920x1080)</option>
             </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              id="include-captions"
+              type="checkbox"
+              className="h-4 w-4"
+              checked={enableSubtitles && hasAnyCaptions}
+              onChange={(e) => setEnableSubtitles(e.target.checked)}
+              disabled={inFlight || !hasAnyCaptions}
+            />
+            <label htmlFor="include-captions" className={`text-sm ${!hasAnyCaptions ? 'text-gray-400' : 'text-gray-700'}`}>
+              Include Captions (burned-in)
+            </label>
           </div>
 
           <div className="mt-2">

@@ -12,6 +12,7 @@ type MediaState = {
   clearAll: () => void;
   selectClip: (clipId: string | null) => void;
   initializeFromSaved: () => Promise<void>;
+  updateClip: (clipId: string, updates: Partial<MediaClip>) => void;
 };
 
 // Debounced save helper scoped to this module
@@ -54,6 +55,13 @@ export const useMediaStore = create<MediaState>((set, get) => ({
   },
 
   selectClip: (clipId) => set({ selectedClipId: clipId }),
+
+  updateClip: (clipId, updates) => {
+    set((state) => ({
+      clips: state.clips.map((c) => (c.id === clipId ? { ...c, ...updates } : c)),
+    }));
+    scheduleSave(() => get().clips);
+  },
 
   initializeFromSaved: async () => {
     // Set initializing flag to true at start

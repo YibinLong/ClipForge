@@ -97,6 +97,15 @@ export const IPC_CHANNELS = {
    */
   OPEN_RECORDINGS_FOLDER: 'open-recordings-folder',
   
+  /**
+   * Captions generation: extract audio, transcribe, and write SRT
+   */
+  GENERATE_CAPTIONS: 'generate-captions',
+  /**
+   * Progress events for caption generation
+   */
+  GENERATE_CAPTIONS_PROGRESS: 'generate-captions-progress',
+  
   // Future channels will be added here as we implement more features:
   // START_RECORDING: 'start-recording',
   // EXPORT_VIDEO: 'export-video',
@@ -194,6 +203,8 @@ export interface StartExportTimelineRequest {
   suggestedName?: string;
   /** Target resolution for export. Defaults to 'source' */
   resolution?: 'source' | '720p' | '1080p';
+  /** Include burned-in captions when available */
+  enableSubtitles?: boolean;
 }
 
 export interface StartExportSuccessResponse {
@@ -283,7 +294,8 @@ export type IPCResponse =
   | SaveRecordingFileResponse
   | TranscodeWebmToMp4Response
   | ChooseRecordingOutputResponse
-  | OpenRecordingsFolderResponse;
+  | OpenRecordingsFolderResponse
+  | GenerateCaptionsResponse;
 
 /**
  * Combined response type that includes potential errors
@@ -355,5 +367,32 @@ export interface ChooseRecordingOutputResponse {
 
 export interface OpenRecordingsFolderResponse {
   success: true;
+}
+
+// =========================================================================
+// CAPTIONS (Epic 7.6)
+// =========================================================================
+
+export type GenerateCaptionsPhase = 'extracting_audio' | 'transcribing' | 'generating_srt' | 'complete' | 'error';
+
+export interface GenerateCaptionsRequest {
+  /** Media clip id (for logging/association) */
+  clipId: string;
+  /** Absolute path to the video file to caption */
+  videoPath: string;
+}
+
+export interface GenerateCaptionsResponse {
+  success: true;
+  /** Absolute path to the generated SRT file */
+  srtPath: string;
+}
+
+export interface GenerateCaptionsProgressEvent {
+  clipId: string;
+  phase: GenerateCaptionsPhase;
+  message?: string;
+  progress?: number; // 0..100 if applicable
+  errorMessage?: string;
 }
 

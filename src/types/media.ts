@@ -64,6 +64,9 @@ export interface MediaClip {
   
   /** Absolute path to the thumbnail image file */
   thumbnail: string;
+
+  /** Optional absolute path to generated subtitles (SRT) for this media */
+  subtitlesPath?: string;
 }
 
 /**
