@@ -27,6 +27,7 @@ import React, { useEffect, useState } from 'react';
 import { isIPCError, ImportFileResponse, IPC_CHANNELS } from '../../types/ipc';
 import { MediaClip } from '../../types/media';
 import { useMediaStore } from '../stores/mediaStore';
+import ScreenRecorder from './ScreenRecorder';
 
 interface MediaLibraryProps {
   onSelectClip?: (clip: MediaClip) => void;
@@ -88,6 +89,9 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
   
   // State to track loading state during import
   const [isImporting, setIsImporting] = useState(false);
+
+  // Screen recorder modal flag
+  const [showRecorder, setShowRecorder] = useState(false);
 
   // Initialize persisted media library on first mount
   useEffect(() => {
@@ -384,7 +388,7 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
       </div>
 
       {/* Import Button */}
-      <div className="mb-6">
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
         <button
           onClick={handleImportClick}
           disabled={isImporting || isInitializing}
@@ -398,6 +402,12 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
           `}
         >
           {isInitializing ? '⏳ Loading Library...' : isImporting ? '⏳ Opening...' : '➕ Import Video'}
+        </button>
+        <button
+          onClick={() => setShowRecorder(true)}
+          className="w-full py-4 px-6 rounded-lg font-semibold text-white text-lg bg-purple-600 hover:bg-purple-700 active:bg-purple-800 transition-all duration-200 hover:shadow-lg"
+        >
+          🎥 Record Screen
         </button>
       </div>
 
@@ -542,6 +552,9 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
           </div>
         )}
       </div>
+      {showRecorder && (
+        <ScreenRecorder onClose={() => setShowRecorder(false)} />
+      )}
     </div>
   );
 };

@@ -342,3 +342,39 @@ export async function processVideoFile(
   };
 }
 
+/**
+ * Transcode a WebM (VP8/Opus) file to MP4 (H.264/AAC)
+ * 
+ * - Video codec: libx264
+ * - Pixel format: yuv420p
+ * - Audio codec: aac
+ * - Fast start for streaming: -movflags +faststart
+ */
+export function transcodeWebmToMp4(inputPath: string, outputPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    try {
+      // Ensure output directory exists
+      const outDir = path.dirname(outputPath);
+      if (!fs.existsSync(outDir)) {
+        fs.mkdirSync(outDir, { recursive: true });
+      }
+
+      ffmpeg(inputPath)
+        .outputOptions([
+          '-c:v libx264',
+          '-pix_fmt yuv420p',
+          '-profile:v high',
+          '-preset medium',
+          '-c:a aac',
+          '-b:a 192k',
+          '-movflags +faststart',
+        ])
+        .on('end', () => resolve())
+        .on('error', (err) => reject(err))
+        .save(outputPath);
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
