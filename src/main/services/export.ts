@@ -218,7 +218,6 @@ function buildGraph(
       // Use effectiveOverlapDur to ensure we don't extend beyond the trimmed base clip
       const ovTrimStart = ov.trimStart + Math.max(0, overlapStart - ov.startTime);
       const ovTrimEnd = ovTrimStart + effectiveOverlapDur;
-      const ovLabel = `ov${i}_${ovIndex}`;
       const ovPaddedLabel = `ovpad${i}_${ovIndex}`;
       
       // VIDEO: Trim overlay, convert to RGBA for transparency, scale, then add delay padding before and after
@@ -241,7 +240,6 @@ function buildGraph(
       // AUDIO: Extract audio from Track 2 (overlay) clips
       // WHY: We want to mix Track 2 audio with Track 1 audio in the final export
       // Trim, normalize, and pad the overlay audio to match the base clip duration
-      const oaLabel = `oa${i}_${ovIndex}`;
       const oaPaddedLabel = `oapad${i}_${ovIndex}`;
       
       // Extract and trim audio from overlay, normalize to 48kHz stereo fltp (same as base audio)
@@ -254,14 +252,8 @@ function buildGraph(
     });
     
     // If no overlays were applied, vOutLabel is still bv (base video)
-    // Rename final output to expected label
-    const finalLabel = `v${i}`;
-    if (vOutLabel !== bv) {
-      // Had overlays, rename final chained result
-      vOutLabel = vOutLabel; // Keep the last overlay output
-    }
-    // Store for later normalization
-    const vBeforeNormalize = vOutLabel;
+    // If overlays were applied, vOutLabel is the last overlay output
+    // No need to rename - vOutLabel is already correct
 
     // Apply subtitles if enabled and available for this base clip's media
     if (enableSubtitles) {
@@ -310,10 +302,9 @@ function buildGraph(
   }
 
   // Final formatting (segments are already normalized); ensure yuv420p
-  let mapVideo = `[${vout}]`;
-  let mapAudio = `[${aout}]`;
   filters.push(`[${vout}]format=yuv420p[vf]`);
-  mapVideo = `[vf]`;
+  const mapVideo = `[vf]`;
+  const mapAudio = `[${aout}]`;
 
   return { inputs: uniquePaths, filters, mapVideo, mapAudio, totalDuration, tempSrtPaths };
 }
@@ -331,7 +322,11 @@ export function exportTimelineWithOverlay(
   // Prepare temp directory for adjusted SRTs
   // Use Electron's system temp directory (works in both dev and production)
   const tempDir = path.join(app.getPath('temp'), 'clipforge-srt', `${Date.now()}-${Math.random().toString(36).slice(2,8)}`);
-  try { fs.mkdirSync(tempDir, { recursive: true }); } catch {}
+  try { 
+    fs.mkdirSync(tempDir, { recursive: true }); 
+  } catch (err) {
+    // Ignore mkdir errors
+  }
 
   const makeTempSrtForWindow = (originalSrtPath: string, start: number, end: number): string | null => {
     try {
@@ -345,12 +340,12 @@ export function exportTimelineWithOverlay(
         .join('\n');
       fs.writeFileSync(outPath, s, 'utf8');
       return outPath;
-    } catch (e) {
+    } catch (err) {
       return null;
     }
   };
 
-  const { inputs, filters, mapVideo, mapAudio, totalDuration, tempSrtPaths } = buildGraph(
+  const { inputs, filters, mapVideo, mapAudio, tempSrtPaths } = buildGraph(
     baseClips,
     overlayClips,
     media,
@@ -364,10 +359,7 @@ export function exportTimelineWithOverlay(
       const jobId = `export-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const cmd = ffmpeg();
       inputs.forEach((p) => cmd.input(p));
-      // Debug: log inputs and filter graph
-      console.log('[FFMPEG][inputs]', inputs);
-      console.log('[FFMPEG][filters]', filters.join(';'));
-
+      
       cmd
         .complexFilter(filters, [mapVideo, mapAudio])
         .outputOptions(['-movflags', '+faststart', '-shortest'])
@@ -375,13 +367,9 @@ export function exportTimelineWithOverlay(
         .audioCodec('aac')
         .format('mp4')
         .output(outputPath)
-        .on('start', (commandLine) => {
-          console.log('[FFMPEG][start]', commandLine);
+        .on('start', (_commandLine) => {
           activeJob = { jobId, cmd, outputPath };
           if (cbs.onStart) cbs.onStart(jobId);
-        })
-        .on('stderr', (line) => {
-          console.log('[FFMPEG][stderr]', line);
         })
         .on('progress', (p) => {
           const seconds = parseTimemark((p as unknown as { timemark?: string }).timemark);
@@ -391,10 +379,24 @@ export function exportTimelineWithOverlay(
           // Cleanup temp SRTs
           try {
             for (const p of tempSrtPaths) {
-              try { fs.existsSync(p) && fs.unlinkSync(p); } catch {}
+              try { 
+                if (fs.existsSync(p)) {
+                  fs.unlinkSync(p);
+                }
+              } catch (err) {
+                // Ignore cleanup errors
+              }
             }
-            try { fs.existsSync(tempDir) && fs.rmdirSync(tempDir); } catch {}
-          } catch {}
+            try { 
+              if (fs.existsSync(tempDir)) {
+                fs.rmdirSync(tempDir);
+              }
+            } catch (err) {
+              // Ignore cleanup errors
+            }
+          } catch (err) {
+            // Ignore cleanup errors
+          }
           if (cbs.onEnd) cbs.onEnd();
           activeJob = null;
           resolve();
@@ -406,13 +408,33 @@ export function exportTimelineWithOverlay(
             if (cbs.onCancel) cbs.onCancel();
             activeJob = null;
             // Delete partial file best-effort
-            try { require('fs').existsSync(outputPath) && require('fs').unlinkSync(outputPath); } catch {}
+            try { 
+              if (fs.existsSync(outputPath)) {
+                fs.unlinkSync(outputPath);
+              }
+            } catch (err) {
+              // Ignore cleanup errors
+            }
             try {
               for (const p of tempSrtPaths) {
-                try { fs.existsSync(p) && fs.unlinkSync(p); } catch {}
+                try { 
+                  if (fs.existsSync(p)) {
+                    fs.unlinkSync(p);
+                  }
+                } catch (err) {
+                  // Ignore cleanup errors
+                }
               }
-              try { fs.existsSync(tempDir) && fs.rmdirSync(tempDir); } catch {}
-            } catch {}
+              try { 
+                if (fs.existsSync(tempDir)) {
+                  fs.rmdirSync(tempDir);
+                }
+              } catch (err) {
+                // Ignore cleanup errors
+              }
+            } catch (err) {
+              // Ignore cleanup errors
+            }
             reject(new Error('Export cancelled'));
             return;
           }
