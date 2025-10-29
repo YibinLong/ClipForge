@@ -526,24 +526,24 @@
 
 ---
 
-### **Epic 7.3: Simultaneous Recording (PiP)** ⬜
+### **Epic 7.3: Simultaneous Recording (PiP)** ✅
 
 **Story:** Record screen and webcam simultaneously in picture-in-picture layout
 
-- ⬜ **Task 7.3.1:** Create combined recording mode in UI (checkbox or toggle)
-- ⬜ **Task 7.3.2:** Get both screen stream and webcam stream
-- ⬜ **Task 7.3.3:** Create canvas element for compositing streams
-- ⬜ **Task 7.3.4:** Draw screen stream as full canvas background
-- ⬜ **Task 7.3.5:** Draw webcam stream as smaller overlay (bottom-right corner)
-- ⬜ **Task 7.3.6:** Set webcam overlay size (e.g., 320x240)
-- ⬜ **Task 7.3.7:** Use canvas.captureStream() to get composite stream
-- ⬜ **Task 7.3.8:** Add microphone audio track to composite stream
-- ⬜ **Task 7.3.9:** Create MediaRecorder from composite stream
-- ⬜ **Task 7.3.10:** Record composite stream to file
-- ⬜ **Task 7.3.11:** Test PiP recording shows both screen and webcam
+- ✅ **Task 7.3.1:** Create combined recording mode in UI (checkbox or toggle)
+- ✅ **Task 7.3.2:** Get both screen stream and webcam stream
+- ✅ **Task 7.3.3:** Create canvas element for compositing streams
+- ✅ **Task 7.3.4:** Draw screen stream as full canvas background
+- ✅ **Task 7.3.5:** Draw webcam stream as smaller overlay (bottom-right corner)
+- ✅ **Task 7.3.6:** Set webcam overlay size (e.g., 320x240)
+- ✅ **Task 7.3.7:** Use canvas.captureStream() to get composite stream
+- ✅ **Task 7.3.8:** Add microphone audio track to composite stream
+- ✅ **Task 7.3.9:** Create MediaRecorder from composite stream
+- ✅ **Task 7.3.10:** Record composite stream to file
+- ✅ **Task 7.3.11:** Test PiP recording shows both screen and webcam
 - ⬜ **Task 7.3.12:** Adjust webcam position/size options (stretch goal)
 
-**Acceptance:** Can record screen with webcam overlay, both video streams visible in recording, audio captured from microphone. ⬜
+**Acceptance:** Can record screen with webcam overlay, both video streams visible in recording, audio captured from microphone. ✅
 
 ---
 

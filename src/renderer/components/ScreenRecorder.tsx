@@ -21,6 +21,7 @@ const ScreenRecorder: React.FC<Props> = ({ onClose }) => {
   const [includeAudio, setIncludeAudio] = useState(true);
   const [includeWindows, setIncludeWindows] = useState(false);
   const [useSaveAs, setUseSaveAs] = useState(false);
+  const [pipEnabled, setPipEnabled] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [status, setStatus] = useState<string>('Idle');
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +30,15 @@ const ScreenRecorder: React.FC<Props> = ({ onClose }) => {
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const addClips = useMediaStore((s) => s.addClips);
+
+  // PiP-specific refs
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const pipScreenStreamRef = useRef<MediaStream | null>(null);
+  const pipCamStreamRef = useRef<MediaStream | null>(null);
+  const pipMicStreamRef = useRef<MediaStream | null>(null);
+  const screenVideoElRef = useRef<HTMLVideoElement | null>(null);
+  const camVideoElRef = useRef<HTMLVideoElement | null>(null);
 
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const showToast = (type: 'success' | 'error', message: string) => {
@@ -76,6 +86,36 @@ const ScreenRecorder: React.FC<Props> = ({ onClose }) => {
     }
     streamRef.current = null;
     mediaRecorderRef.current = null;
+
+    // Stop PiP input streams if any
+    const stopAll = (s: MediaStream | null) => {
+      if (s) {
+        for (const t of s.getTracks()) t.stop();
+      }
+    };
+    stopAll(pipScreenStreamRef.current);
+    stopAll(pipCamStreamRef.current);
+    stopAll(pipMicStreamRef.current);
+    pipScreenStreamRef.current = null;
+    pipCamStreamRef.current = null;
+    pipMicStreamRef.current = null;
+
+    // Cancel RAF loop
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+
+    // Clear helper video elements
+    if (screenVideoElRef.current) {
+      try { screenVideoElRef.current.srcObject = null; } catch {}
+      screenVideoElRef.current = null;
+    }
+    if (camVideoElRef.current) {
+      try { camVideoElRef.current.srcObject = null; } catch {}
+      camVideoElRef.current = null;
+    }
+    canvasRef.current = null;
   }
 
   const startRecording = async () => {
@@ -91,79 +131,212 @@ const ScreenRecorder: React.FC<Props> = ({ onClose }) => {
         setError(setRes.error);
         return;
       }
-
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: includeAudio,
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-
-      const options: MediaRecorderOptions = { mimeType: 'video/webm;codecs=vp8,opus' };
-      const mr = new MediaRecorder(stream, options);
-      chunksRef.current = [];
-      mr.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
-      };
-      mr.onstart = () => setStatus('Recording...');
-      mr.onstop = async () => {
-        setStatus('Finalizing...');
-        try {
-          const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-          const arrayBuffer = await blob.arrayBuffer();
-          const saveRes = await saveRecordingFile(arrayBuffer, 'screen-recording');
-          if (isIPCError(saveRes)) {
-            setError(saveRes.error);
-            showToast('error', 'Failed to save recording');
-            return;
-          }
-          let outputPath: string | undefined = undefined;
-          if (useSaveAs) {
-            const choose = await chooseRecordingOutput();
-            if (isIPCError(choose)) {
-              // user cancelled; fall back to default
-              outputPath = undefined;
-            } else {
-              outputPath = choose.filePath;
-            }
-          }
-
-          const transRes = await transcodeWebmToMp4(saveRes.webmPath, outputPath);
-          if (isIPCError(transRes)) {
-            setError(transRes.error);
-            showToast('error', 'Transcoding failed');
-            return;
-          }
-          // Auto-import the mp4 and add to store
-          const importRes = await window.electron.invoke(IPC_CHANNELS.IMPORT_FILE_PATHS, { paths: [transRes.mp4Path] });
-          if (isIPCError(importRes)) {
-            setError(importRes.error);
-            showToast('error', 'Import failed');
-          } else {
-            const clips = (importRes as { success: true; clips: unknown[] }).clips as any[];
-            if (Array.isArray(clips) && clips.length > 0) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              addClips(clips as any);
-            }
-            setStatus('Done');
-            showToast('success', 'Recording saved and imported');
-          }
-        } catch (e) {
-          setError('Failed to finalize recording');
-          showToast('error', 'Failed to finalize recording');
-        } finally {
-          cleanupStream();
-          setIsRecording(false);
+      if (!pipEnabled) {
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: includeAudio,
+        });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
         }
-      };
-      mediaRecorderRef.current = mr;
-      mr.start(200); // gather data every 200ms
-      setIsRecording(true);
+
+        const options: MediaRecorderOptions = { mimeType: 'video/webm;codecs=vp8,opus' };
+        const mr = new MediaRecorder(stream, options);
+        chunksRef.current = [];
+        mr.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+        };
+        mr.onstart = () => setStatus('Recording...');
+        mr.onstop = async () => {
+          setStatus('Finalizing...');
+          try {
+            const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+            const arrayBuffer = await blob.arrayBuffer();
+            const saveRes = await saveRecordingFile(arrayBuffer, 'screen-recording');
+            if (isIPCError(saveRes)) {
+              setError(saveRes.error);
+              showToast('error', 'Failed to save recording');
+              return;
+            }
+            let outputPath: string | undefined = undefined;
+            if (useSaveAs) {
+              const choose = await chooseRecordingOutput();
+              if (isIPCError(choose)) {
+                // user cancelled; fall back to default
+                outputPath = undefined;
+              } else {
+                outputPath = choose.filePath;
+              }
+            }
+
+            const transRes = await transcodeWebmToMp4(saveRes.webmPath, outputPath);
+            if (isIPCError(transRes)) {
+              setError(transRes.error);
+              showToast('error', 'Transcoding failed');
+              return;
+            }
+            // Auto-import the mp4 and add to store
+            const importRes = await window.electron.invoke(IPC_CHANNELS.IMPORT_FILE_PATHS, { paths: [transRes.mp4Path] });
+            if (isIPCError(importRes)) {
+              setError(importRes.error);
+              showToast('error', 'Import failed');
+            } else {
+              const clips = (importRes as { success: true; clips: unknown[] }).clips as any[];
+              if (Array.isArray(clips) && clips.length > 0) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                addClips(clips as any);
+              }
+              setStatus('Done');
+              showToast('success', 'Recording saved and imported');
+            }
+          } catch (e) {
+            setError('Failed to finalize recording');
+            showToast('error', 'Failed to finalize recording');
+          } finally {
+            cleanupStream();
+            setIsRecording(false);
+          }
+        };
+        mediaRecorderRef.current = mr;
+        mr.start(200); // gather data every 200ms
+        setIsRecording(true);
+      } else {
+        // PiP flow: screen + webcam composited on canvas; mic audio only
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        const camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        const micStream = includeAudio ? await navigator.mediaDevices.getUserMedia({ audio: true, video: false }) : null;
+
+        pipScreenStreamRef.current = screenStream;
+        pipCamStreamRef.current = camStream;
+        pipMicStreamRef.current = micStream;
+
+        // Prepare helper video elements
+        const screenVideo = document.createElement('video');
+        screenVideo.muted = true;
+        screenVideo.playsInline = true;
+        screenVideo.srcObject = screenStream;
+        await screenVideo.play();
+        screenVideoElRef.current = screenVideo;
+
+        const camVideo = document.createElement('video');
+        camVideo.muted = true;
+        camVideo.playsInline = true;
+        camVideo.srcObject = camStream;
+        await camVideo.play();
+        camVideoElRef.current = camVideo;
+
+        // Canvas sized to screen capture
+        const screenSettings = screenStream.getVideoTracks()[0]?.getSettings?.() ?? {} as MediaTrackSettings;
+        const cw = (screenSettings.width as number) || 1280;
+        const ch = (screenSettings.height as number) || 720;
+        const canvas = document.createElement('canvas');
+        canvas.width = cw;
+        canvas.height = ch;
+        canvasRef.current = canvas;
+        const ctx = canvas.getContext('2d');
+
+        const margin = 16;
+        const targetOverlayW = 320;
+        const targetOverlayH = 240;
+
+        const draw = () => {
+          if (!ctx) return;
+          try {
+            ctx.drawImage(screenVideo, 0, 0, cw, ch);
+            const camSettings = camStream.getVideoTracks()[0]?.getSettings?.() ?? {} as MediaTrackSettings;
+            const camW = (camSettings.width as number) || targetOverlayW;
+            const camH = (camSettings.height as number) || targetOverlayH;
+            const scale = Math.min(targetOverlayW / camW, targetOverlayH / camH);
+            const drawW = Math.max(1, Math.floor(camW * scale));
+            const drawH = Math.max(1, Math.floor(camH * scale));
+            const dx = cw - drawW - margin;
+            const dy = ch - drawH - margin;
+            ctx.drawImage(camVideo, dx, dy, drawW, drawH);
+          } catch {
+            // ignore draw errors during teardown
+          }
+          rafIdRef.current = requestAnimationFrame(draw);
+        };
+        draw();
+
+        const compositeStream = canvas.captureStream(30);
+        if (micStream) {
+          const at = micStream.getAudioTracks()[0];
+          if (at) compositeStream.addTrack(at);
+        }
+        streamRef.current = compositeStream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = compositeStream;
+          await videoRef.current.play();
+        }
+
+        const options: MediaRecorderOptions = { mimeType: 'video/webm;codecs=vp8,opus' };
+        const mr = new MediaRecorder(compositeStream, options);
+        chunksRef.current = [];
+        mr.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunksRef.current.push(e.data); };
+        mr.onstart = () => setStatus('Recording...');
+        mr.onstop = async () => {
+          setStatus('Finalizing...');
+          try {
+            const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+            const arrayBuffer = await blob.arrayBuffer();
+            const saveRes = await saveRecordingFile(arrayBuffer, 'screen-webcam-pip');
+            if (isIPCError(saveRes)) {
+              setError(saveRes.error);
+              showToast('error', 'Failed to save recording');
+              return;
+            }
+            let outputPath: string | undefined = undefined;
+            if (useSaveAs) {
+              const choose = await chooseRecordingOutput();
+              if (isIPCError(choose)) {
+                outputPath = undefined;
+              } else {
+                outputPath = choose.filePath;
+              }
+            }
+            const transRes = await transcodeWebmToMp4(saveRes.webmPath, outputPath);
+            if (isIPCError(transRes)) {
+              setError(transRes.error);
+              showToast('error', 'Transcoding failed');
+              return;
+            }
+            const importRes = await window.electron.invoke(IPC_CHANNELS.IMPORT_FILE_PATHS, { paths: [transRes.mp4Path] });
+            if (isIPCError(importRes)) {
+              setError(importRes.error);
+              showToast('error', 'Import failed');
+            } else {
+              const clips = (importRes as { success: true; clips: unknown[] }).clips as any[];
+              if (Array.isArray(clips) && clips.length > 0) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                addClips(clips as any);
+              }
+              setStatus('Done');
+              showToast('success', 'Recording saved and imported');
+            }
+          } catch {
+            setError('Failed to finalize recording');
+            showToast('error', 'Failed to finalize recording');
+          } finally {
+            cleanupStream();
+            setIsRecording(false);
+          }
+        };
+        mediaRecorderRef.current = mr;
+        mr.start(200);
+        setIsRecording(true);
+      }
     } catch (e) {
-      setError('Recording failed to start. Ensure screen capture permissions are granted.');
+      const errName = (e as { name?: string }).name;
+      if (errName === 'NotAllowedError') {
+        setError('Permission denied. Enable Screen Recording, Camera, and Microphone in System Settings → Privacy & Security.');
+      } else if (errName === 'NotFoundError') {
+        setError('Required device not found. Connect a camera/microphone and try again.');
+      } else {
+        setError('Recording failed to start. Ensure screen/camera/mic permissions are granted.');
+      }
       cleanupStream();
     }
   };
@@ -242,6 +415,10 @@ const ScreenRecorder: React.FC<Props> = ({ onClose }) => {
                 <input type="checkbox" checked={!includeWindows} onChange={(e) => setIncludeWindows(!e.target.checked)} disabled={isRecording} />
                 Screen only (exclude windows)
               </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" checked={pipEnabled} onChange={(e) => setPipEnabled(e.target.checked)} disabled={isRecording} />
+              Include webcam overlay (PiP)
+            </label>
               <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input type="checkbox" checked={useSaveAs} onChange={(e) => setUseSaveAs(e.target.checked)} disabled={isRecording} />
                 Save As...
