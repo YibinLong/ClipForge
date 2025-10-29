@@ -24,12 +24,6 @@ import { TimelineClip } from './timeline';
  */
 export const IPC_CHANNELS = {
   /**
-   * Test channel for verifying IPC infrastructure works correctly
-   * Accepts a message string and returns an echo response with timestamp
-   */
-  TEST_MESSAGE: 'test-message',
-  
-  /**
    * Import file channel for opening file picker dialog
    * Opens native file dialog to select video files (.mp4, .mov, .webm)
    * Extracts metadata and generates thumbnails for each file
@@ -117,34 +111,6 @@ export const IPC_CHANNELS = {
  * This is extracted from the IPC_CHANNELS object
  */
 export type IPCChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
-
-// ============================================================================
-// TEST MESSAGE HANDLER
-// ============================================================================
-
-/**
- * Request payload for test-message channel
- * 
- * This is what the renderer sends to the main process
- */
-export interface TestMessageRequest {
-  /** The message to echo back */
-  message: string;
-}
-
-/**
- * Response payload for test-message channel
- * 
- * This is what the main process sends back to the renderer
- */
-export interface TestMessageResponse {
-  /** The echoed message with 'Echo: ' prefix */
-  reply: string;
-  /** Unix timestamp (milliseconds) when the message was processed */
-  timestamp: number;
-  /** Whether the request was successful */
-  success: true;
-}
 
 // ============================================================================
 // IMPORT FILE HANDLER
@@ -283,7 +249,6 @@ export function isIPCError(response: unknown): response is IPCErrorResponse {
  * Add new response types here as we implement more handlers
  */
 export type IPCResponse = 
-  | TestMessageResponse 
   | ImportFileResponse
   | SaveMediaLibraryResponse
   | LoadMediaLibraryResponse
