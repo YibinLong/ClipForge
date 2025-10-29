@@ -1,7 +1,7 @@
 import { app, BrowserWindow } from 'electron';
 import { registerHandler } from './ipc/handlers';
 import { handleTestMessage } from './ipc/test-handler';
-import { handleImportFile } from './ipc/import-handler';
+import { handleImportFile, handleImportFilePaths } from './ipc/import-handler';
 import { handleLoadMediaLibrary, handleSaveMediaLibrary } from './ipc/media-library-handler';
 import { handleStartExport, handleCancelExport } from './ipc/export-handler';
 import { IPC_CHANNELS, SaveMediaLibraryRequest } from '../types/ipc';
@@ -63,6 +63,11 @@ function registerIPCHandlers(): void {
   
   // Register the import file handler (file picker dialog)
   registerHandler(IPC_CHANNELS.IMPORT_FILE, handleImportFile);
+  // Register drag-and-drop paths import handler
+  registerHandler(IPC_CHANNELS.IMPORT_FILE_PATHS, async (event, ...args) => {
+    const req = (args?.[0] ?? {}) as { paths?: string[] };
+    return handleImportFilePaths(event, { paths: Array.isArray(req.paths) ? req.paths : [] });
+  });
   
   // Media library persistence handlers
   // Adapt strongly-typed handler to generic IPCHandler signature

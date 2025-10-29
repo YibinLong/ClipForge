@@ -36,6 +36,11 @@ export const IPC_CHANNELS = {
    * Returns array of complete MediaClip objects
    */
   IMPORT_FILE: 'import-file',
+  /**
+   * Import files directly by absolute paths (used for drag-and-drop)
+   * Returns array of complete MediaClip objects after FFmpeg processing
+   */
+  IMPORT_FILE_PATHS: 'import-file-paths',
   
   /**
    * Persist media library to disk via main process (electron-store)
@@ -121,6 +126,14 @@ export interface ImportFileResponse {
   clips: MediaClip[];
   /** Whether the request was successful */
   success: true;
+}
+
+/**
+ * Request payload for import-file-paths channel
+ */
+export interface ImportFilePathsRequest {
+  /** Absolute file paths dropped by the user */
+  paths: string[];
 }
 
 // ============================================================================

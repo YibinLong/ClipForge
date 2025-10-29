@@ -24,7 +24,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { isIPCError, ImportFileResponse } from '../../types/ipc';
+import { isIPCError, ImportFileResponse, IPC_CHANNELS } from '../../types/ipc';
 import { MediaClip } from '../../types/media';
 import { useMediaStore } from '../stores/mediaStore';
 
@@ -111,7 +111,7 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
       console.log('[MEDIA LIBRARY] Opening file dialog...');
 
       // Call IPC handler to open file dialog and process files
-      const response = await window.electron.invoke('import-file');
+      const response = await window.electron.invoke(IPC_CHANNELS.IMPORT_FILE);
 
       // Check for errors
       if (isIPCError(response)) {
@@ -149,6 +149,48 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(true);
+  };
+
+  /**
+   * Handle drag enter event
+   *
+   * Adds extensive debug logging about the DataTransfer payload so we can
+   * understand what the OS/browser is providing during a drag operation.
+   */
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+
+    try {
+      const dt = e.dataTransfer;
+      // DataTransfer types present during drag
+      const types = Array.from(dt.types ?? []);
+      // Items metadata (kind/type)
+      const items = Array.from(dt.items ?? []).map((it) => ({ kind: it.kind, type: it.type }));
+      // Files basic metadata (name/type/size). Path is Electron-specific and may be undefined.
+      const filesMeta = Array.from(dt.files ?? []).map((f) => ({
+        name: (f as File).name,
+        type: (f as File).type,
+        size: (f as File).size,
+        hasPathProp: 'path' in (f as unknown as Record<string, unknown>),
+        path: (f as unknown as { path?: string }).path,
+      }));
+      // Potential URI payloads provided by macOS/Finder or browsers
+      const uriList = dt.getData('text/uri-list');
+      const textPlain = dt.getData('text/plain');
+
+      console.groupCollapsed('[MEDIA LIBRARY][DEBUG] dragenter payload');
+      console.log('effectAllowed:', dt.effectAllowed, 'dropEffect:', dt.dropEffect);
+      console.log('types:', types);
+      console.log('items:', items);
+      console.log('filesMeta:', filesMeta);
+      if (uriList) console.log('text/uri-list:', uriList);
+      if (textPlain) console.log('text/plain:', textPlain);
+      console.groupEnd();
+    } catch (err) {
+      console.warn('[MEDIA LIBRARY][DEBUG] Error inspecting dragenter event:', err);
+    }
   };
 
   /**
@@ -197,7 +239,33 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
     console.log('[MEDIA LIBRARY] Files dropped');
 
     // Extract files from DataTransfer
-    const droppedFiles = Array.from(e.dataTransfer.files);
+    const dt = e.dataTransfer;
+    const droppedFiles = Array.from(dt.files);
+    console.groupCollapsed('[MEDIA LIBRARY][DEBUG] drop payload');
+    try {
+      const types = Array.from(dt.types ?? []);
+      const items = Array.from(dt.items ?? []).map((it) => ({ kind: it.kind, type: it.type }));
+      const filesMeta = droppedFiles.map((f) => ({
+        name: f.name,
+        type: f.type,
+        size: f.size,
+        hasPathProp: 'path' in (f as unknown as Record<string, unknown>),
+        path: (f as unknown as { path?: string }).path,
+        // Some environments provide file:// URIs instead of the Electron path
+      }));
+      const uriList = dt.getData('text/uri-list');
+      const textPlain = dt.getData('text/plain');
+      console.log('effectAllowed:', dt.effectAllowed, 'dropEffect:', dt.dropEffect);
+      console.log('types:', types);
+      console.log('items:', items);
+      console.log('filesMeta:', filesMeta);
+      if (uriList) console.log('text/uri-list:', uriList);
+      if (textPlain) console.log('text/plain:', textPlain);
+    } catch (err) {
+      console.warn('[MEDIA LIBRARY][DEBUG] Error inspecting drop event:', err);
+    } finally {
+      console.groupEnd();
+    }
     console.log('[MEDIA LIBRARY] Dropped files count:', droppedFiles.length);
     
     // Filter for valid video file extensions
@@ -214,13 +282,54 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
     }
 
     // Extract file paths from File objects
-    // Note: file.path is an Electron-specific property
-    const filePaths = validFiles
-      .map(file => (file as any).path)
-      .filter((path): path is string => path !== undefined && path !== null);
+    // 1) Prefer legacy Electron file.path when present
+    let filePaths = validFiles
+      .map(file => (file as unknown as { path?: string }).path)
+      .filter((p): p is string => !!p);
+
+    // 2) Fallback: use secure resolver exposed by preload (Electron webUtils)
+    if (filePaths.length === 0 && typeof window !== 'undefined' && window.electron && 'getPathForFile' in window.electron) {
+      try {
+        const resolved = validFiles
+          .map(file => window.electron.getPathForFile(file))
+          .filter((p): p is string => !!p);
+        if (resolved.length > 0) {
+          console.log('[MEDIA LIBRARY][DEBUG] Resolved paths via webUtils:', resolved);
+          filePaths = resolved;
+        }
+      } catch (resolverErr) {
+        console.warn('[MEDIA LIBRARY][DEBUG] getPathForFile errored:', resolverErr);
+      }
+    }
+
+    // 3) Last resort: parse file:// URIs from payload if available
+    if (filePaths.length === 0) {
+      const uriListRaw = dt.getData('text/uri-list');
+      if (uriListRaw) {
+        const uris = uriListRaw
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter((line) => !!line && !line.startsWith('#'));
+        console.log('[MEDIA LIBRARY][DEBUG] Parsed URIs from text/uri-list:', uris);
+        try {
+          const fromUris = uris
+            .filter((u) => u.toLowerCase().startsWith('file://'))
+            .map((u) => decodeURI(u.replace('file://', '')));
+          if (fromUris.length > 0) {
+            filePaths = fromUris;
+          }
+        } catch (uriErr) {
+          console.warn('[MEDIA LIBRARY][DEBUG] Failed to decode URI list:', uriErr);
+        }
+      }
+    }
     
     if (filePaths.length === 0) {
       console.log('[MEDIA LIBRARY] No valid file paths extracted from dropped files');
+      console.warn('[MEDIA LIBRARY][DEBUG] Environment info:', {
+        userAgent: navigator.userAgent,
+        locationProtocol: window.location.protocol,
+      });
       alert('Could not extract file paths. Please try using the Import button instead.');
       return;
     }
@@ -234,16 +343,28 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
     
     try {
       setIsImporting(true);
-      
-      // For dropped files, we need to manually process them since we already have the paths
-      // We'll call the import handler with the file paths
-      // NOTE: The current import handler uses dialog, so we can't pass paths directly
-      // For Epic 2.2, we'll use the Import button workflow for dropped files
-      // Users should use the Import button for now; drag-and-drop will be enhanced in later epics
-      
-      alert(`Drag-and-drop detected ${filePaths.length} files.\n\nFor Epic 2.2, please use the "Import Video" button to process files with metadata extraction.\n\nDirect drag-and-drop with metadata will be added in a future epic.`);
-      
-      console.log('[MEDIA LIBRARY] Drag-and-drop deferred to Import button workflow');
+
+      const response = await window.electron.invoke(
+        IPC_CHANNELS.IMPORT_FILE_PATHS,
+        { paths: filePaths }
+      );
+
+      if (isIPCError(response)) {
+        console.error('[MEDIA LIBRARY] DnD import error:', response.error, response.details);
+        alert(`Import failed: ${response.error}`);
+        return;
+      }
+
+      const importResponse = response as ImportFileResponse;
+      if (importResponse.clips.length > 0) {
+        console.log(`[MEDIA LIBRARY] Adding ${importResponse.clips.length} clip(s) from drag-and-drop`);
+        addClips(importResponse.clips);
+      } else {
+        console.warn('[MEDIA LIBRARY] DnD import returned 0 clips');
+      }
+    } catch (err) {
+      console.error('[MEDIA LIBRARY] Unexpected error during DnD import:', err);
+      alert('An unexpected error occurred during drag-and-drop import');
     } finally {
       setIsImporting(false);
     }
@@ -282,6 +403,7 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
 
       {/* Drag-and-Drop Zone */}
       <div
+        onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}

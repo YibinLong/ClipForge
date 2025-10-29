@@ -20,7 +20,7 @@
 
 import { dialog, IpcMainInvokeEvent } from 'electron';
 import * as path from 'path';
-import { ImportFileResponse, IPCErrorResponse } from '../../types/ipc';
+import { ImportFileResponse, IPCErrorResponse, ImportFilePathsRequest } from '../../types/ipc';
 import { MediaClip } from '../../types/media';
 import { processVideoFile } from '../services/ffmpeg';
 
@@ -175,6 +175,55 @@ export async function handleImportFile(
       error: 'Failed to import files',
       details: error instanceof Error ? error.message : String(error),
     };
+  }
+}
+
+/**
+ * Handle import-file-paths IPC requests
+ *
+ * Processes provided absolute file paths through FFmpeg to extract metadata
+ * and generate thumbnails. Returns MediaClip objects (same shape as
+ * handleImportFile) without opening any dialogs. Intended for drag-and-drop.
+ */
+export async function handleImportFilePaths(
+  _event: IpcMainInvokeEvent,
+  request: ImportFilePathsRequest
+): Promise<ImportFileResponse | IPCErrorResponse> {
+  try {
+    const inputPaths = Array.isArray(request?.paths) ? request.paths : [];
+    if (inputPaths.length === 0) {
+      return { success: false, error: 'No file paths provided' };
+    }
+
+    console.log(`[IMPORT] Processing ${inputPaths.length} dropped path(s)...`);
+
+    const clips: MediaClip[] = [];
+    for (const filePath of inputPaths) {
+      try {
+        const clipId = generateClipId();
+        const filename = path.basename(filePath);
+        const videoData = await processVideoFile(filePath, clipId);
+        const clip: MediaClip = {
+          id: clipId,
+          filename,
+          path: filePath,
+          duration: videoData.duration,
+          width: videoData.width,
+          height: videoData.height,
+          size: videoData.size,
+          thumbnail: videoData.thumbnail,
+        };
+        clips.push(clip);
+        console.log(`[IMPORT] (DnD) processed: ${filename}`);
+      } catch (fileErr) {
+        console.error(`[IMPORT] (DnD) failed to process ${filePath}:`, fileErr);
+      }
+    }
+
+    return { success: true, clips };
+  } catch (err) {
+    console.error('[IMPORT] Error during drag-and-drop import:', err);
+    return { success: false, error: 'Failed to import dropped files', details: err instanceof Error ? err.message : String(err) };
   }
 }
 

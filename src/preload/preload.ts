@@ -18,7 +18,7 @@
  * See: https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
  */
 
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { IPC_CHANNELS } from '../types/ipc';
 
 /**
@@ -146,6 +146,23 @@ contextBridge.exposeInMainWorld('electron', {
     return () => {
       ipcRenderer.removeListener(channel, subscription);
     };
+  },
+
+  /**
+   * Resolve an absolute file system path for a dropped File object.
+   *
+   * Modern Electron removes File.path in the renderer for security. This
+   * helper uses webUtils.getPathForFile in the preload (trusted) context to
+   * obtain the path safely.
+   */
+  getPathForFile: (file: File): string | null => {
+    try {
+      const p = webUtils.getPathForFile(file);
+      return p ?? null;
+    } catch (e) {
+      console.warn('[PRELOAD] getPathForFile failed:', e);
+      return null;
+    }
   },
 
   /**

@@ -72,6 +72,12 @@ export interface ElectronAPI {
    * unsubscribe();
    */
   on: (channel: IPCChannel | string, callback: (...args: unknown[]) => void) => () => void;
+
+  /**
+   * Resolve absolute path for a dropped File (from Finder/Explorer).
+   * Returns null if unavailable.
+   */
+  getPathForFile: (file: File) => string | null;
 }
 
 /**
