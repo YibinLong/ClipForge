@@ -177,6 +177,9 @@ function buildGraph(
     let vOutLabel = bv; // Start with base video
     const overlays = findOverlaysForWindow(base.startTime, base.endTime);
     
+    // Track overlay audio streams for mixing later
+    const overlayAudioLabels: string[] = [];
+    
     overlays.forEach((ov, ovIndex) => {
       const ovMedia = media.find((m) => m.id === ov.mediaId);
       if (!ovMedia) return; // Skip if media not found
@@ -191,33 +194,55 @@ function buildGraph(
       if (overlapDur <= 0) return; // Skip if no actual overlap
       
       // Calculate delay: how long after base clip starts does overlay appear?
-      const delayInBase = overlapStart - base.startTime;
+      // IMPORTANT: Use timeline positions, but clamp to the actual trimmed duration
+      const delayInBase = Math.max(0, Math.min(overlapStart - base.startTime, dur));
+      
+      // Calculate how much of the overlay actually fits within the trimmed base clip
+      const effectiveOverlapDur = Math.min(overlapDur, dur - delayInBase);
       
       // Calculate padding after overlay ends (to fill rest of base clip duration)
-      const baseDur = base.endTime - base.startTime;
-      const padAfter = Math.max(0, baseDur - delayInBase - overlapDur);
+      // IMPORTANT: Use trimmed duration (dur), not timeline duration (base.endTime - base.startTime)
+      // WHY: When Track 1 is trimmed, we want overlays to match the actual video length, not the timeline position
+      const baseDur = dur;  // Use trimmed duration
+      const padAfter = Math.max(0, baseDur - delayInBase - effectiveOverlapDur);
       
       // Overlay trim within overlay source
+      // Use effectiveOverlapDur to ensure we don't extend beyond the trimmed base clip
       const ovTrimStart = ov.trimStart + Math.max(0, overlapStart - ov.startTime);
-      const ovTrimEnd = ovTrimStart + overlapDur;
+      const ovTrimEnd = ovTrimStart + effectiveOverlapDur;
       const ovLabel = `ov${i}_${ovIndex}`;
       const ovPaddedLabel = `ovpad${i}_${ovIndex}`;
       
-      // Trim overlay, convert to RGBA for transparency, scale, then add delay padding before and after
+      // VIDEO: Trim overlay, convert to RGBA for transparency, scale, then add delay padding before and after
       // The tpad filter adds transparent frames to align overlay timing within the base clip
       filters.push(
         `[${ovIdx}:v]trim=start=${f(ovTrimStart)}:end=${f(ovTrimEnd)},setpts=PTS-STARTPTS,format=rgba,scale=${overlayW}:-2,tpad=start_duration=${f(delayInBase)}:stop_duration=${f(padAfter)}:color=0x00000000[${ovPaddedLabel}]`
       );
       
       // Apply overlay to current video stream (chains multiple overlays)
-      // shortest=0 means use longest input duration (base video continues after overlay)
+      // shortest=1 means stop when the shortest input ends (base video determines duration)
+      // WHY: Prevents overlay padding from extending the video beyond the trimmed base clip
       const nextLabel = `v${i}_ov${ovIndex}`;
       filters.push(
-        `[${vOutLabel}][${ovPaddedLabel}]overlay=x=main_w-w-20:y=main_h-h-20:shortest=0[${nextLabel}]`
+        `[${vOutLabel}][${ovPaddedLabel}]overlay=x=main_w-w-20:y=main_h-h-20:shortest=1[${nextLabel}]`
       );
       
       // Update current video label for next overlay in chain
       vOutLabel = nextLabel;
+      
+      // AUDIO: Extract audio from Track 2 (overlay) clips
+      // WHY: We want to mix Track 2 audio with Track 1 audio in the final export
+      // Trim, normalize, and pad the overlay audio to match the base clip duration
+      const oaLabel = `oa${i}_${ovIndex}`;
+      const oaPaddedLabel = `oapad${i}_${ovIndex}`;
+      
+      // Extract and trim audio from overlay, normalize to 48kHz stereo fltp (same as base audio)
+      // Then pad with silence before and after to align with base clip timing
+      filters.push(
+        `[${ovIdx}:a]atrim=start=${f(ovTrimStart)}:end=${f(ovTrimEnd)},asetpts=PTS-STARTPTS,aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,adelay=${Math.round(delayInBase * 1000)}|${Math.round(delayInBase * 1000)},apad=pad_dur=${f(baseDur)}[${oaPaddedLabel}]`
+      );
+      
+      overlayAudioLabels.push(oaPaddedLabel);
     });
     
     // If no overlays were applied, vOutLabel is still bv (base video)
@@ -236,9 +261,18 @@ function buildGraph(
       `[${vOutLabel}]scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease,pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2:color=black,format=yuv420p,fps=30[${vs}]`
     );
 
-    // Audio already normalized as [ba]
+    // AUDIO MIXING: Combine Track 1 (base) audio with Track 2 (overlay) audio(s)
+    // WHY: This creates the final mixed audio that includes both tracks
     const as = `as${i}`;
-    filters.push(`[${ba}]anull[${as}]`);
+    if (overlayAudioLabels.length > 0) {
+      // Mix base audio with all overlay audios using amix filter
+      // amix sums the audio streams together (natural mixing)
+      const allAudioInputs = [`[${ba}]`, ...overlayAudioLabels.map(l => `[${l}]`)].join('');
+      filters.push(`${allAudioInputs}amix=inputs=${1 + overlayAudioLabels.length}:duration=longest[${as}]`);
+    } else {
+      // No overlay audio, just pass through base audio
+      filters.push(`[${ba}]anull[${as}]`);
+    }
 
     concatInputs.push(`[${vs}]`, `[${as}]`);
   });

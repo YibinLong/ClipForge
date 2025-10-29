@@ -31,7 +31,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, baseSrc, overlaySrc, ext
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [hasError, setHasError] = useState<string | null>(null);
-  const [audioSource, setAudioSource] = useState<'track1' | 'track2'>('track1');
+  const [audioSource, setAudioSource] = useState<'track1' | 'track2' | 'both'>('track1');
   const playTimeline = useTimelineStore((s) => s.play);
   const pauseTimeline = useTimelineStore((s) => s.pause);
 
@@ -147,15 +147,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, baseSrc, overlaySrc, ext
   }, [overlayExternalTime, overlaySrc]);
 
   // Mute routing based on selected audio source
+  // WHY: This controls which audio track(s) the user hears during preview
+  // - 'track1': Only base video audio plays
+  // - 'track2': Only overlay video audio plays
+  // - 'both': Both tracks play simultaneously (mixed by browser)
   useEffect(() => {
     const base = baseVideoRef.current;
     const overlay = overlayVideoRef.current;
     if (base) {
-      base.muted = audioSource !== 'track1';
+      base.muted = audioSource === 'track2'; // Mute base only when track2 is selected
       base.volume = volume;
     }
     if (overlay) {
-      overlay.muted = audioSource !== 'track2';
+      overlay.muted = audioSource === 'track1'; // Mute overlay only when track1 is selected
       overlay.volume = volume;
     }
   }, [audioSource, volume]);
@@ -270,6 +274,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, baseSrc, overlaySrc, ext
               className="accent-blue-600"
             />
             <span>Track 2</span>
+          </label>
+          <label className="inline-flex items-center gap-1">
+            <input
+              type="radio"
+              name="audio-source"
+              value="both"
+              checked={audioSource === 'both'}
+              onChange={() => setAudioSource('both')}
+              className="accent-blue-600"
+            />
+            <span>Both</span>
           </label>
         </div>
         {/* Time and progress */}
