@@ -187,6 +187,29 @@ contextBridge.exposeInMainWorld('electron', {
     }
     return ipcRenderer.invoke(IPC_CHANNELS.CANCEL_EXPORT, { jobId });
   },
+
+  /**
+   * Generate captions (SRT) for a given media clip
+   */
+  generateCaptions: (clipId: string, videoPath: string) => {
+    if (!isChannelAllowed(IPC_CHANNELS.GENERATE_CAPTIONS)) {
+      return Promise.reject(new Error('Channel not allowed'));
+    }
+    return ipcRenderer.invoke(IPC_CHANNELS.GENERATE_CAPTIONS, { clipId, videoPath });
+  },
+
+  /**
+   * Listen for caption generation progress events
+   */
+  onGenerateCaptionsProgress: (callback: (...args: unknown[]) => void) => {
+    if (!isChannelAllowed(IPC_CHANNELS.GENERATE_CAPTIONS_PROGRESS)) {
+      console.error('[PRELOAD] GENERATE_CAPTIONS_PROGRESS channel not allowed');
+      return () => {};
+    }
+    const sub = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => callback(...args);
+    ipcRenderer.on(IPC_CHANNELS.GENERATE_CAPTIONS_PROGRESS, sub);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.GENERATE_CAPTIONS_PROGRESS, sub);
+  },
 });
 
 console.log('✅ Preload script loaded successfully');
