@@ -1,6 +1,5 @@
 import { IpcMainInvokeEvent, dialog } from 'electron';
-import * as path from 'path';
-import { exportSingleClip, exportTimelineWithOverlay, cancelActiveExport } from '../services/export';
+import { exportTimelineWithOverlay, cancelActiveExport } from '../services/export';
 import {
   StartExportTimelineRequest,
   StartExportResponse,

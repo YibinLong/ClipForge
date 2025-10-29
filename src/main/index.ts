@@ -10,7 +10,6 @@ try {
 }
 import { app, BrowserWindow, session, desktopCapturer } from 'electron';
 import { registerHandler } from './ipc/handlers';
-import { handleTestMessage } from './ipc/test-handler';
 import { handleImportFile, handleImportFilePaths } from './ipc/import-handler';
 import { handleLoadMediaLibrary, handleSaveMediaLibrary } from './ipc/media-library-handler';
 import { handleStartExport, handleCancelExport } from './ipc/export-handler';
@@ -76,11 +75,6 @@ const createWindow = (): void => {
  * - Makes it easy to see all available IPC channels
  */
 function registerIPCHandlers(): void {
-  console.log('[MAIN] Registering IPC handlers...');
-  
-  // Register the test message handler (ping/pong)
-  registerHandler(IPC_CHANNELS.TEST_MESSAGE, handleTestMessage);
-  
   // Register the import file handler (file picker dialog)
   registerHandler(IPC_CHANNELS.IMPORT_FILE, handleImportFile);
   // Register drag-and-drop paths import handler
@@ -134,8 +128,6 @@ function registerIPCHandlers(): void {
     const req = (args?.[0] ?? {}) as { clipId?: string; videoPath?: string };
     return handleGenerateCaptions(_event, { clipId: String(req.clipId ?? ''), videoPath: String(req.videoPath ?? '') });
   });
-  
-  console.log('[MAIN] IPC handlers registered successfully');
 }
 
 // This method will be called when Electron has finished
