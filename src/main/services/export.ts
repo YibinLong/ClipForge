@@ -239,7 +239,7 @@ function buildGraph(
       // Extract and trim audio from overlay, normalize to 48kHz stereo fltp (same as base audio)
       // Then pad with silence before and after to align with base clip timing
       filters.push(
-        `[${ovIdx}:a]atrim=start=${f(ovTrimStart)}:end=${f(ovTrimEnd)},asetpts=PTS-STARTPTS,aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,adelay=${Math.round(delayInBase * 1000)}|${Math.round(delayInBase * 1000)},apad=pad_dur=${f(baseDur)}[${oaPaddedLabel}]`
+        `[${ovIdx}:a]atrim=start=${f(ovTrimStart)}:end=${f(ovTrimEnd)},asetpts=PTS-STARTPTS,aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,adelay=${Math.round(delayInBase * 1000)}|${Math.round(delayInBase * 1000)},apad=pad_dur=${f(padAfter)},atrim=end=${f(baseDur)}[${oaPaddedLabel}]`
       );
       
       overlayAudioLabels.push(oaPaddedLabel);
@@ -268,7 +268,7 @@ function buildGraph(
       // Mix base audio with all overlay audios using amix filter
       // amix sums the audio streams together (natural mixing)
       const allAudioInputs = [`[${ba}]`, ...overlayAudioLabels.map(l => `[${l}]`)].join('');
-      filters.push(`${allAudioInputs}amix=inputs=${1 + overlayAudioLabels.length}:duration=longest[${as}]`);
+      filters.push(`${allAudioInputs}amix=inputs=${1 + overlayAudioLabels.length}:duration=first:dropout_transition=0[${as}]`);
     } else {
       // No overlay audio, just pass through base audio
       filters.push(`[${ba}]anull[${as}]`);
@@ -317,7 +317,7 @@ export function exportTimelineWithOverlay(
 
       cmd
         .complexFilter(filters, [mapVideo, mapAudio])
-        .outputOptions(['-movflags', '+faststart'])
+        .outputOptions(['-movflags', '+faststart', '-shortest'])
         .videoCodec('libx264')
         .audioCodec('aac')
         .format('mp4')
