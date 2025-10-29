@@ -99,12 +99,16 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
 
   // Subscribe to captions progress (optional logging/UI hooks)
   useEffect(() => {
-    const unsub = onGenerateCaptionsProgress((e) => {
-      try {
-        console.log('[CAPTIONS][PROGRESS]', e);
-      } catch {}
+    const unsub = onGenerateCaptionsProgress((_e) => {
+      // Progress event received
     });
-    return () => { try { if (unsub) unsub(); } catch {} };
+    return () => { 
+      try { 
+        if (unsub) unsub(); 
+      } catch (err) {
+        // Ignore unsubscribe errors
+      }
+    };
   }, []);
 
   // Optional: auto-scroll to latest item when clips change
@@ -114,7 +118,9 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
       if (listRef.current) {
         listRef.current.scrollTop = listRef.current.scrollHeight;
       }
-    } catch {}
+    } catch (err) {
+      // Ignore scroll errors
+    }
   }, [clips.length]);
 
   // Initialize persisted media library on first mount
@@ -136,28 +142,18 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
   const handleImportClick = async () => {
     try {
       setIsImporting(true);
-      console.log('[MEDIA LIBRARY] Opening file dialog...');
-
-      // Call IPC handler to open file dialog and process files
       const response = await window.electron.invoke(IPC_CHANNELS.IMPORT_FILE);
 
-      // Check for errors
       if (isIPCError(response)) {
         console.error('[MEDIA LIBRARY] Import error:', response.error);
         alert(`Import failed: ${response.error}`);
         return;
       }
 
-      // TypeScript type assertion: response is ImportFileResponse after error check
       const importResponse = response as ImportFileResponse;
 
-      // Add processed clips to store (cumulative)
       if (importResponse.clips.length > 0) {
-        console.log(`[MEDIA LIBRARY] Adding ${importResponse.clips.length} clip(s) with metadata`);
         addClips(importResponse.clips);
-      } else {
-        console.warn('[MEDIA LIBRARY] Import returned 0 clips. This can mean the dialog was cancelled or FFmpeg failed to process selected files.');
-        console.warn('[MEDIA LIBRARY] If you selected files, please check the Main process logs for [FFMPEG] errors.');
       }
     } catch (error) {
       console.error('[MEDIA LIBRARY] Unexpected error during import:', error);
@@ -181,44 +177,11 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
 
   /**
    * Handle drag enter event
-   *
-   * Adds extensive debug logging about the DataTransfer payload so we can
-   * understand what the OS/browser is providing during a drag operation.
    */
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(true);
-
-    try {
-      const dt = e.dataTransfer;
-      // DataTransfer types present during drag
-      const types = Array.from(dt.types ?? []);
-      // Items metadata (kind/type)
-      const items = Array.from(dt.items ?? []).map((it) => ({ kind: it.kind, type: it.type }));
-      // Files basic metadata (name/type/size). Path is Electron-specific and may be undefined.
-      const filesMeta = Array.from(dt.files ?? []).map((f) => ({
-        name: (f as File).name,
-        type: (f as File).type,
-        size: (f as File).size,
-        hasPathProp: 'path' in (f as unknown as Record<string, unknown>),
-        path: (f as unknown as { path?: string }).path,
-      }));
-      // Potential URI payloads provided by macOS/Finder or browsers
-      const uriList = dt.getData('text/uri-list');
-      const textPlain = dt.getData('text/plain');
-
-      console.groupCollapsed('[MEDIA LIBRARY][DEBUG] dragenter payload');
-      console.log('effectAllowed:', dt.effectAllowed, 'dropEffect:', dt.dropEffect);
-      console.log('types:', types);
-      console.log('items:', items);
-      console.log('filesMeta:', filesMeta);
-      if (uriList) console.log('text/uri-list:', uriList);
-      if (textPlain) console.log('text/plain:', textPlain);
-      console.groupEnd();
-    } catch (err) {
-      console.warn('[MEDIA LIBRARY][DEBUG] Error inspecting dragenter event:', err);
-    }
   };
 
   /**
@@ -264,37 +227,8 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
     e.stopPropagation();
     setIsDragOver(false);
 
-    console.log('[MEDIA LIBRARY] Files dropped');
-
-    // Extract files from DataTransfer
     const dt = e.dataTransfer;
     const droppedFiles = Array.from(dt.files);
-    console.groupCollapsed('[MEDIA LIBRARY][DEBUG] drop payload');
-    try {
-      const types = Array.from(dt.types ?? []);
-      const items = Array.from(dt.items ?? []).map((it) => ({ kind: it.kind, type: it.type }));
-      const filesMeta = droppedFiles.map((f) => ({
-        name: f.name,
-        type: f.type,
-        size: f.size,
-        hasPathProp: 'path' in (f as unknown as Record<string, unknown>),
-        path: (f as unknown as { path?: string }).path,
-        // Some environments provide file:// URIs instead of the Electron path
-      }));
-      const uriList = dt.getData('text/uri-list');
-      const textPlain = dt.getData('text/plain');
-      console.log('effectAllowed:', dt.effectAllowed, 'dropEffect:', dt.dropEffect);
-      console.log('types:', types);
-      console.log('items:', items);
-      console.log('filesMeta:', filesMeta);
-      if (uriList) console.log('text/uri-list:', uriList);
-      if (textPlain) console.log('text/plain:', textPlain);
-    } catch (err) {
-      console.warn('[MEDIA LIBRARY][DEBUG] Error inspecting drop event:', err);
-    } finally {
-      console.groupEnd();
-    }
-    console.log('[MEDIA LIBRARY] Dropped files count:', droppedFiles.length);
     
     // Filter for valid video file extensions
     const validExtensions = ['.mp4', '.mov', '.webm'];
@@ -304,7 +238,6 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
     });
 
     if (validFiles.length === 0) {
-      console.log('[MEDIA LIBRARY] No valid video files dropped');
       alert('Please drop valid video files (.mp4, .mov, .webm)');
       return;
     }
@@ -322,11 +255,10 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
           .map(file => window.electron.getPathForFile(file))
           .filter((p): p is string => !!p);
         if (resolved.length > 0) {
-          console.log('[MEDIA LIBRARY][DEBUG] Resolved paths via webUtils:', resolved);
           filePaths = resolved;
         }
       } catch (resolverErr) {
-        console.warn('[MEDIA LIBRARY][DEBUG] getPathForFile errored:', resolverErr);
+        // Silently fail and try next method
       }
     }
 
@@ -338,7 +270,6 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
           .split(/\r?\n/)
           .map((line) => line.trim())
           .filter((line) => !!line && !line.startsWith('#'));
-        console.log('[MEDIA LIBRARY][DEBUG] Parsed URIs from text/uri-list:', uris);
         try {
           const fromUris = uris
             .filter((u) => u.toLowerCase().startsWith('file://'))
@@ -347,22 +278,15 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
             filePaths = fromUris;
           }
         } catch (uriErr) {
-          console.warn('[MEDIA LIBRARY][DEBUG] Failed to decode URI list:', uriErr);
+          // Silently fail
         }
       }
     }
     
     if (filePaths.length === 0) {
-      console.log('[MEDIA LIBRARY] No valid file paths extracted from dropped files');
-      console.warn('[MEDIA LIBRARY][DEBUG] Environment info:', {
-        userAgent: navigator.userAgent,
-        locationProtocol: window.location.protocol,
-      });
       alert('Could not extract file paths. Please try using the Import button instead.');
       return;
     }
-    
-    console.log(`[MEDIA LIBRARY] Processing ${filePaths.length} dropped file(s) through FFmpeg...`);
     
     // Process dropped files through the same workflow as Import button
     // This is a bit of a workaround since the import-file handler uses dialog.showOpenDialog
@@ -471,7 +395,7 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
             <div className="text-4xl mb-3">🎬</div>
             <p className="text-lg font-medium mb-1">No videos imported yet</p>
             <p className="text-sm">
-              Click "Import Video" above to start
+              Click &ldquo;Import Video&rdquo; above to start
             </p>
             <p className="text-xs text-gray-400 mt-2">
               (Drag & drop will be enhanced in a future epic)
@@ -508,8 +432,8 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({ onSelectClip, selectedClipI
                       if (img) {
                         e.dataTransfer.setDragImage(img, 16, 16);
                       }
-                    } catch (err) {
-                      console.warn('[MEDIA LIBRARY] Failed to set drag payload', err);
+                    } catch {
+                      // Silently fail
                     }
                   }}
                   onClick={() => {
