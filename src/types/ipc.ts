@@ -67,6 +67,36 @@ export const IPC_CHANNELS = {
    */
   CANCEL_EXPORT: 'cancel-export',
   
+  /**
+   * Screen recording: fetch available screen/window sources (Epic 7.1)
+   */
+  GET_SCREEN_SOURCES: 'get-screen-sources',
+
+  /**
+   * Screen recording: set the selected desktop capture source id
+   */
+  SET_CAPTURE_SOURCE: 'set-capture-source',
+
+  /**
+   * Screen recording: persist a recorded WebM file to disk
+   */
+  SAVE_RECORDING_FILE: 'save-recording-file',
+
+  /**
+   * Screen recording: transcode recorded WebM to MP4 (H.264/AAC)
+   */
+  TRANSCODE_WEBM_TO_MP4: 'transcode-webm-to-mp4',
+
+  /**
+   * Screen recording: show save dialog to choose MP4 output path
+   */
+  CHOOSE_RECORDING_OUTPUT: 'choose-recording-output',
+
+  /**
+   * Screen recording: open the recordings folder in the OS
+   */
+  OPEN_RECORDINGS_FOLDER: 'open-recordings-folder',
+  
   // Future channels will be added here as we implement more features:
   // START_RECORDING: 'start-recording',
   // EXPORT_VIDEO: 'export-video',
@@ -247,11 +277,83 @@ export type IPCResponse =
   | SaveMediaLibraryResponse
   | LoadMediaLibraryResponse
   | StartExportResponse
-  | CancelExportResponse;
+  | CancelExportResponse
+  | GetScreenSourcesResponse
+  | SetCaptureSourceResponse
+  | SaveRecordingFileResponse
+  | TranscodeWebmToMp4Response
+  | ChooseRecordingOutputResponse
+  | OpenRecordingsFolderResponse;
 
 /**
  * Combined response type that includes potential errors
  * This is what handlers should return
  */
 export type IPCResult<T = IPCResponse> = T | IPCErrorResponse;
+
+// =========================================================================
+// SCREEN RECORDING (Epic 7.1)
+// =========================================================================
+
+/**
+ * Lightweight screen source descriptor sent to renderer
+ */
+export interface ScreenSource {
+  id: string;
+  name: string;
+  /** data URL (PNG) thumbnail for quick preview */
+  thumbnailDataUrl: string;
+}
+
+export interface GetScreenSourcesResponse {
+  success: true;
+  sources: ScreenSource[];
+}
+
+export interface GetScreenSourcesRequest {
+  includeWindows?: boolean;
+}
+
+export interface SetCaptureSourceRequest {
+  sourceId: string;
+}
+
+export interface SetCaptureSourceResponse {
+  success: true;
+}
+
+export interface SaveRecordingFileRequest {
+  /** Raw bytes of recorded WebM; ArrayBuffer is structured-cloneable over IPC */
+  data: ArrayBuffer;
+  /** Optional hint for filename (basename without extension recommended) */
+  filenameHint?: string;
+}
+
+export interface SaveRecordingFileResponse {
+  success: true;
+  /** Absolute path to saved .webm */
+  webmPath: string;
+}
+
+export interface TranscodeWebmToMp4Request {
+  inputPath: string;
+  /** Optional custom MP4 output path */
+  outputPath?: string;
+}
+
+export interface TranscodeWebmToMp4Response {
+  success: true;
+  /** Absolute path to generated .mp4 */
+  mp4Path: string;
+}
+
+export interface ChooseRecordingOutputResponse {
+  success: true;
+  /** Absolute path selected by the user (MP4) */
+  filePath: string;
+}
+
+export interface OpenRecordingsFolderResponse {
+  success: true;
+}
 
