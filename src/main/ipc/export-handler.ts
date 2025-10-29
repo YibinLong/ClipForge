@@ -22,7 +22,7 @@ export async function handleStartExport(
     return err;
   }
 
-  const { timeline, media, trackId, suggestedName, resolution } = request as StartExportTimelineRequest;
+  const { timeline, media, trackId, suggestedName, resolution, enableSubtitles } = request as StartExportTimelineRequest;
   if (!Array.isArray(timeline) || !Array.isArray(media)) {
     const err: IPCErrorResponse = {
       success: false,
@@ -60,6 +60,7 @@ export async function handleStartExport(
         media,
         resolution: resolution ?? 'source',
         outputPath: saveRes.filePath,
+        enableSubtitles: !!enableSubtitles,
       },
       {
         onStart: () => {
