@@ -64,8 +64,9 @@ const createWindow = (): void => {
   // and load the index.html of the app.
   mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
 
-  // Open the DevTools.
-  mainWindow.webContents.openDevTools();
+  // DevTools can be opened manually with Cmd+Shift+I (macOS) or Ctrl+Shift+I (Windows/Linux)
+  // Removed auto-open for better user experience
+  // mainWindow.webContents.openDevTools();
 };
 
 /**
