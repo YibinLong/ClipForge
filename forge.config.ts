@@ -20,6 +20,14 @@ const config: ForgeConfig = {
     },
     // Required for macOS identity and future signing/notarization
     appBundleId: 'com.clipforge.app',
+    // Add macOS privacy usage descriptions so packaged app can request permissions
+    // Without these, macOS will deny camera/microphone access in production builds
+    extendInfo: {
+      NSCameraUsageDescription:
+        'ClipForge needs camera access to record your webcam in videos.',
+      NSMicrophoneUsageDescription:
+        'ClipForge needs microphone access to record your audio.',
+    },
     // Ensure ffmpeg/ffprobe binaries are present in packaged Resources (macOS arm64)
     // NOTE: macOS arm64-only per user request
     extraResource: [

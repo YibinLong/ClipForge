@@ -1,9 +1,10 @@
 import React, { useMemo, useRef, useCallback, useState } from 'react';
-import { Stage, Layer, Line, Rect, Text, Group } from 'react-konva';
+import { Stage, Layer, Line, Rect, Text, Group, Image as KonvaImage } from 'react-konva';
 import { useTimelineStore } from '../stores/timelineStore';
 import { useMediaStore } from '../stores/mediaStore';
 import { TimelineClip } from '../../types/timeline';
 import ExportModal from './ExportModal';
+import useImage from 'use-image';
 
 interface TimelineProps {
   /**
@@ -11,6 +12,91 @@ interface TimelineProps {
    */
   durationSec?: number;
 }
+
+/**
+ * ThumbnailTiles Component
+ * 
+ * WHY THIS EXISTS:
+ * - Renders repeating thumbnail images across a timeline clip
+ * - Uses the same thumbnail from the media library import
+ * - Makes clips visually identifiable on the timeline
+ * 
+ * HOW IT WORKS:
+ * - Loads the thumbnail image from the file system
+ * - Tiles (repeats) it across the clip width
+ * - Each tile is ~80px wide
+ */
+interface ThumbnailTilesProps {
+  thumbnailPath: string;
+  clipWidth: number;
+  clipHeight: number;
+  tileWidth?: number;
+}
+
+const ThumbnailTiles: React.FC<ThumbnailTilesProps> = ({ 
+  thumbnailPath, 
+  clipWidth, 
+  clipHeight,
+  tileWidth = 80 
+}) => {
+  // useImage hook loads the image file and returns [image, status]
+  // The image is an HTMLImageElement that Konva can render
+  const [image] = useImage(`file://${thumbnailPath}`);
+  
+  if (!image) {
+    // Image hasn't loaded yet, return nothing
+    return null;
+  }
+  
+  // Calculate how many tiles fit across the clip width
+  const numTiles = Math.ceil(clipWidth / tileWidth);
+  const tiles: React.ReactNode[] = [];
+  
+  // Create each tile with object-cover behavior (crop to fill, maintain aspect ratio)
+  for (let i = 0; i < numTiles; i++) {
+    const x = i * tileWidth;
+    // The last tile might be partially cut off
+    const actualWidth = Math.min(tileWidth, clipWidth - x);
+    
+    // Object-cover logic: maintain aspect ratio and fill the space
+    const imgAspect = image.width / image.height;
+    const tileAspect = actualWidth / clipHeight;
+    
+    let cropWidth = image.width;
+    let cropHeight = image.height;
+    let cropX = 0;
+    let cropY = 0;
+    
+    if (imgAspect > tileAspect) {
+      // Image is wider than tile, crop left/right
+      cropWidth = image.height * tileAspect;
+      cropX = (image.width - cropWidth) / 2;
+    } else {
+      // Image is taller than tile, crop top/bottom
+      cropHeight = image.width / tileAspect;
+      cropY = (image.height - cropHeight) / 2;
+    }
+    
+    tiles.push(
+      <KonvaImage
+        key={i}
+        image={image}
+        x={x}
+        y={0}
+        width={actualWidth}
+        height={clipHeight}
+        crop={{
+          x: cropX,
+          y: cropY,
+          width: cropWidth,
+          height: cropHeight
+        }}
+      />
+    );
+  }
+  
+  return <>{tiles}</>;
+};
 
 /**
  * WHY THIS COMPONENT EXISTS
@@ -454,12 +540,20 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                     }}
                     onMouseLeave={() => setHoverTip({ visible: false, text: '', x: 0, y: 0 })}
                     dragBoundFunc={(pos) => {
+                      // SNAP TO TRACK: While dragging, snap Y to either track 1 or track 2
+                      // This prevents clips from appearing "in-between" tracks
                       const clampedX = Math.max(0, Math.min(stageWidth - width, pos.x));
                       const trackAreaTopLocal = RULER_HEIGHT + 10;
-                      const minY = trackAreaTopLocal;
-                      const maxY = trackAreaTopLocal + TRACK_HEIGHT; // allow moving into second lane
-                      const clampedY = Math.max(minY, Math.min(maxY, pos.y));
-                      return { x: clampedX, y: clampedY };
+                      const track1Y = trackAreaTopLocal;
+                      const track2Y = trackAreaTopLocal + TRACK_HEIGHT;
+                      
+                      // Calculate the midpoint between the two tracks
+                      const midpoint = track1Y + (TRACK_HEIGHT / 2);
+                      
+                      // Snap to whichever track is closer
+                      const snappedY = pos.y < midpoint ? track1Y : track2Y;
+                      
+                      return { x: clampedX, y: snappedY };
                     }}
                     onClick={() => selectTimelineClip(clip.id)}
                     onDragStart={(e) => {
@@ -504,28 +598,71 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                       }
                     }}
                   >
+                    {/* Thumbnail tiles (if media has thumbnail) - clipped to rounded corners */}
+                    {media?.thumbnail ? (
+                      <Group
+                        clipFunc={(ctx) => {
+                          // Clip thumbnails to match the rounded rectangle
+                          ctx.beginPath();
+                          const radius = 6;
+                          const w = width;
+                          const h = trackHeight - 10;
+                          ctx.moveTo(radius, 0);
+                          ctx.lineTo(w - radius, 0);
+                          ctx.quadraticCurveTo(w, 0, w, radius);
+                          ctx.lineTo(w, h - radius);
+                          ctx.quadraticCurveTo(w, h, w - radius, h);
+                          ctx.lineTo(radius, h);
+                          ctx.quadraticCurveTo(0, h, 0, h - radius);
+                          ctx.lineTo(0, radius);
+                          ctx.quadraticCurveTo(0, 0, radius, 0);
+                          ctx.closePath();
+                        }}
+                      >
+                        <ThumbnailTiles
+                          thumbnailPath={media.thumbnail}
+                          clipWidth={width}
+                          clipHeight={trackHeight - 10}
+                          tileWidth={80}
+                        />
+                      </Group>
+                    ) : (
+                      // Fallback: colored rectangle with filename if no thumbnail
+                      <>
+                        <Rect
+                          x={0}
+                          y={0}
+                          width={width}
+                          height={trackHeight - 10}
+                          fill={fill}
+                          cornerRadius={6}
+                        />
+                        <Text
+                          x={8}
+                          y={8}
+                          text={label}
+                          fontSize={12}
+                          fill="#374151"
+                          width={Math.max(0, width - 16)}
+                          wrap={'none'}
+                          ellipsis
+                        />
+                      </>
+                    )}
+                    
+                    {/* Border and shadow overlay (drawn on top of thumbnails) */}
                     <Rect
                       x={0}
                       y={0}
                       width={width}
                       height={trackHeight - 10}
-                      fill={fill}
+                      fill="transparent"
                       stroke={stroke}
                       strokeWidth={isSelected ? 3 : 1}
                       cornerRadius={6}
                       shadowColor={'#000'}
                       shadowBlur={isSelected ? 8 : 2}
                       shadowOpacity={0.1}
-                    />
-                    <Text
-                      x={8}
-                      y={8}
-                      text={label}
-                      fontSize={12}
-                      fill="#374151"
-                      width={Math.max(0, width - 16)}
-                      wrap={'none'}
-                      ellipsis
                     />
 
                     {/* LEFT Trim Handle - FIXED: Calculates delta from initial position (0) */}

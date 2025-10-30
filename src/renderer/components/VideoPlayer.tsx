@@ -176,21 +176,39 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, baseSrc, baseSubtitlesPa
 
   // Mute routing based on selected audio source
   // WHY: This controls which audio track(s) the user hears during preview
-  // - 'track1': Only base video audio plays
-  // - 'track2': Only overlay video audio plays
-  // - 'both': Both tracks play simultaneously (mixed by browser)
+  // - 'track1': Only base video audio plays (overlay muted)
+  // - 'track2': Only overlay video audio plays (base muted)
+  // - 'both': Both tracks play simultaneously (neither muted, mixed by browser)
   useEffect(() => {
     const base = baseVideoRef.current;
     const overlay = overlayVideoRef.current;
-    if (base) {
-      base.muted = audioSource === 'track2'; // Mute base only when track2 is selected
-      base.volume = volume;
-    }
-    if (overlay) {
-      overlay.muted = audioSource === 'track1'; // Mute overlay only when track1 is selected
-      overlay.volume = volume;
-    }
-  }, [audioSource, volume]);
+    
+    const applyAudioSettings = () => {
+      if (base) {
+        // Mute base when track2 is selected (but not when 'both' is selected)
+        base.muted = audioSource === 'track2';
+        base.volume = volume;
+      }
+      if (overlay) {
+        // Mute overlay when track1 is selected (but not when 'both' is selected)
+        overlay.muted = audioSource === 'track1';
+        overlay.volume = volume;
+      }
+    };
+    
+    // Apply immediately
+    applyAudioSettings();
+    
+    // Also apply after loadedmetadata to ensure settings stick
+    const handleLoadedMetadata = () => applyAudioSettings();
+    if (base) base.addEventListener('loadedmetadata', handleLoadedMetadata);
+    if (overlay) overlay.addEventListener('loadedmetadata', handleLoadedMetadata);
+    
+    return () => {
+      if (base) base.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      if (overlay) overlay.removeEventListener('loadedmetadata', handleLoadedMetadata);
+    };
+  }, [audioSource, volume, effectiveBaseSrc, overlaySrc]); // Re-apply when videos change!
 
   const progress = useMemo(() => {
     if (!duration || !isFinite(duration)) return 0;
@@ -272,7 +290,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, baseSrc, baseSubtitlesPa
             ref={overlayVideoRef}
             className="absolute rounded-lg shadow-lg"
             style={{ width: 240, height: 'auto', right: 16, bottom: 16 }}
-            muted={audioSource !== 'track2'}
           >
             <source src={overlaySrc} />
           </video>

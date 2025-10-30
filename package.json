@@ -40,8 +40,10 @@
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-react": "^7.37.5",
+    "events": "^3.3.0",
     "fork-ts-checker-webpack-plugin": "^7.3.0",
     "node-loader": "^2.1.0",
+    "path-browserify": "^1.0.1",
     "postcss": "^8.5.6",
     "postcss-loader": "^8.2.0",
     "style-loader": "^3.3.4",
@@ -61,6 +63,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-konva": "^18.2.14",
+    "use-image": "^1.1.4",
     "zustand": "^4.5.7"
   }
 }

@@ -8,7 +8,7 @@ try {
   // eslint-disable-next-line no-console
   console.warn('[ENV] dotenv not found; skipping .env load');
 }
-import { app, BrowserWindow, session, desktopCapturer } from 'electron';
+import { app, BrowserWindow, session, desktopCapturer, Menu, systemPreferences } from 'electron';
 import { registerHandler } from './ipc/handlers';
 import { handleImportFile, handleImportFilePaths } from './ipc/import-handler';
 import { handleLoadMediaLibrary, handleSaveMediaLibrary } from './ipc/media-library-handler';
@@ -64,8 +64,35 @@ const createWindow = (): void => {
   // and load the index.html of the app.
   mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
 
-  // Open the DevTools.
-  mainWindow.webContents.openDevTools();
+  // DevTools can be toggled via keyboard shortcut (CmdOrCtrl+Alt+I or F12)
+  // No longer auto-opened to avoid distracting users
+  
+  // Setup application menu with DevTools toggle
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: 'View',
+      submenu: [
+        {
+          label: 'Toggle Developer Tools',
+          accelerator: process.platform === 'darwin' ? 'Alt+Command+I' : 'Ctrl+Shift+I',
+          click: () => {
+            mainWindow.webContents.toggleDevTools();
+          }
+        },
+        {
+          label: 'Toggle DevTools (F12)',
+          accelerator: 'F12',
+          click: () => {
+            mainWindow.webContents.toggleDevTools();
+          },
+          visible: false, // hidden menu item, just for the keyboard shortcut
+        }
+      ]
+    }
+  ];
+  
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
 };
 
 /**
@@ -147,10 +174,36 @@ function registerIPCHandlers(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', () => {
+app.on('ready', async () => {
   // Register IPC handlers BEFORE creating the window
   // This ensures handlers are ready when the renderer loads
   registerIPCHandlers();
+  
+  // On macOS, explicitly trigger OS camera/microphone prompts if not yet decided
+  if (process.platform === 'darwin') {
+    try {
+      const cam = systemPreferences.getMediaAccessStatus('camera');
+      if (cam === 'not-determined') {
+        await systemPreferences.askForMediaAccess('camera');
+      }
+      const mic = systemPreferences.getMediaAccessStatus('microphone');
+      if (mic === 'not-determined') {
+        await systemPreferences.askForMediaAccess('microphone');
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[PERMISSIONS] Failed to ask for media access', e);
+    }
+  }
+
+  // Allow media and display-capture permission requests for this app
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
+    if (permission === 'media' || permission === 'display-capture') {
+      callback(true);
+    } else {
+      callback(false);
+    }
+  });
   
   // Configure display media request handler for getDisplayMedia (Epic 7.1)
   // Grants access to the user-selected desktopCapturer source
