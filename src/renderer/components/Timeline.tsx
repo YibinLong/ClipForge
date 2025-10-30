@@ -465,7 +465,7 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                     x={x}
                     y={y}
                     draggable={groupDraggable}
-                    clip={{ x: 0, y: 0, width, height: trackHeight - 10 }}
+                    // NO clipping - allows trim handles to remain visible during recovery/untrim
                     onMouseEnter={(e) => {
                       if (isDraggingClip) return;
                       const stage = e.target.getStage();
@@ -512,22 +512,52 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                       let newStart = Math.round((newX / pixelsPerSecond) * 10) / 10;
                       const durationSec = clip.endTime - clip.startTime;
                       
-                      // snap-to-previous/next edges on same track within epsilon
-                      const EPS = 0.05; // 50ms tolerance
                       // Determine target track by final Y
                       const trackAreaTopLocal = RULER_HEIGHT + 10;
                       const targetTrackId = newY >= trackAreaTopLocal + TRACK_HEIGHT ? 2 : 1;
-                      const sameTrack = timelineClips.filter(c => c.trackId === targetTrackId && c.id !== clip.id);
-                      const neighborEdges = sameTrack.flatMap(c => [c.startTime, c.endTime]);
-
-                      const nearestEdge = neighborEdges.reduce<{edge:number, d:number} | null>((best, edge) => {
-                        const d = Math.abs(edge - newStart);
-                        if (d <= EPS && (!best || d < best.d)) return { edge, d };
-                        return best;
-                      }, null);
-
-                      const snappedStart = nearestEdge ? nearestEdge.edge : newStart;
+                      
+                      // SMART SNAP logic: Snap to nearby clip edges to prevent gaps
+                      // Exclude the clip being dragged from the calculation
+                      const existingOnTrack = timelineClips.filter(c => c.trackId === targetTrackId && c.id !== clip.id);
+                      
+                      let snappedStart: number = newStart;
+                      const SNAP_THRESHOLD = 2.0; // Snap if within 2 seconds of an edge
+                      
+                      if (existingOnTrack.length === 0) {
+                        // Track is empty (or only has the dragged clip): snap to 0
+                        snappedStart = 0;
+                        console.log('[DRAG DEBUG] Track empty → snapping to 0');
+                      } else {
+                        // Find all clip edges (start and end times) on this track
+                        const allEdges = existingOnTrack.flatMap(c => [c.startTime, c.endTime]);
+                        
+                        // Find the closest edge to our drag position
+                        let closestEdge: { edge: number; distance: number } | null = null;
+                        for (const edge of allEdges) {
+                          const distance = Math.abs(edge - newStart);
+                          if (distance <= SNAP_THRESHOLD && (!closestEdge || distance < closestEdge.distance)) {
+                            closestEdge = { edge, distance };
+                          }
+                        }
+                        
+                        if (closestEdge) {
+                          // Snap to the closest edge
+                          snappedStart = closestEdge.edge;
+                          console.log('[DRAG DEBUG] Snapping to nearby edge:', {
+                            rawPosition: newStart,
+                            closestEdge: closestEdge.edge,
+                            distance: closestEdge.distance
+                          });
+                        } else {
+                          // No nearby edges, keep the drag position as-is
+                          snappedStart = newStart;
+                          console.log('[DRAG DEBUG] No snap - too far from edges, keeping position:', newStart);
+                        }
+                      }
+                      
                       const snappedEnd = Math.min(roundedTo10, snappedStart + durationSec);
+                      console.log('[DRAG DEBUG] Final:', { snappedStart, snappedEnd, duration: durationSec });
+                      
                       updateClip(clip.id, { startTime: snappedStart, endTime: snappedEnd });
                       if (clip.trackId !== targetTrackId) {
                         moveClipToTrack(clip.id, targetTrackId);
