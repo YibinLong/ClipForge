@@ -1,5 +1,5 @@
-import React, { useMemo, useRef, useCallback, useState } from 'react';
-import { Stage, Layer, Line, Rect, Text, Group } from 'react-konva';
+import React, { useMemo, useRef, useCallback, useState, useEffect } from 'react';
+import { Stage, Layer, Line, Rect, Text, Group, Image as KonvaImage } from 'react-konva';
 import { useTimelineStore } from '../stores/timelineStore';
 import { useMediaStore } from '../stores/mediaStore';
 import { TimelineClip } from '../../types/timeline';
@@ -32,7 +32,7 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
   const TRACK_GAP = 10;
   const MAJOR_TICK_HEIGHT = 14;
   const MINOR_TICK_HEIGHT = 8;
-  const HANDLE_W = 8;
+  const HANDLE_W = 6; // Trim handle width (reduced from 8 for cleaner look)
   const DEBUG_TRIM = true;
 
   const zoomLevel = useTimelineStore((s) => s.zoomLevel);
@@ -61,6 +61,32 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
     y: number;
   }>({ visible: false, text: '', x: 0, y: 0 });
   const [isDraggingClip, setIsDraggingClip] = useState(false);
+  
+  // Cache for loaded thumbnail images (mediaId -> HTMLImageElement)
+  const [thumbnailImages, setThumbnailImages] = useState<Map<string, HTMLImageElement>>(new Map());
+
+  // Load thumbnail images for all media clips
+  // **EXPLANATION**: This effect loads thumbnail images into memory so we can display them in timeline clips.
+  // We use file:// protocol (same as in MediaLibrary) to access local thumbnail files.
+  useEffect(() => {
+    mediaClips.forEach((media) => {
+      if (!media.thumbnail) return;
+      if (thumbnailImages.has(media.id)) return; // Already loaded
+      
+      const img = new Image();
+      img.onload = () => {
+        setThumbnailImages((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(media.id, img);
+          return newMap;
+        });
+      };
+      img.onerror = () => {
+        console.warn(`[Timeline] Failed to load thumbnail for ${media.id}`);
+      };
+      img.src = `file://${media.thumbnail}`;
+    });
+  }, [mediaClips, thumbnailImages]);
 
   const pixelsPerSecond = BASE_PX_PER_SEC * zoomLevel;
   // Force static 2-minute timeline regardless of first clip (per request)
@@ -456,10 +482,14 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                     dragBoundFunc={(pos) => {
                       const clampedX = Math.max(0, Math.min(stageWidth - width, pos.x));
                       const trackAreaTopLocal = RULER_HEIGHT + 10;
-                      const minY = trackAreaTopLocal;
-                      const maxY = trackAreaTopLocal + TRACK_HEIGHT; // allow moving into second lane
-                      const clampedY = Math.max(minY, Math.min(maxY, pos.y));
-                      return { x: clampedX, y: clampedY };
+                      const track1Y = trackAreaTopLocal;
+                      const track2Y = trackAreaTopLocal + TRACK_HEIGHT;
+                      const trackMidpoint = trackAreaTopLocal + (TRACK_HEIGHT / 2);
+                      
+                      // Snap to either track 1 or track 2 based on which is closer
+                      // This prevents clips from appearing "stuck in the middle"
+                      const snappedY = pos.y < trackMidpoint ? track1Y : track2Y;
+                      return { x: clampedX, y: snappedY };
                     }}
                     onClick={() => selectTimelineClip(clip.id)}
                     onDragStart={(e) => {
@@ -517,16 +547,66 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                       shadowBlur={isSelected ? 8 : 2}
                       shadowOpacity={0.1}
                     />
-                    <Text
-                      x={8}
-                      y={8}
-                      text={label}
-                      fontSize={12}
-                      fill="#374151"
-                      width={Math.max(0, width - 16)}
-                      wrap={'none'}
-                      ellipsis
-                    />
+                    
+                    {/* Thumbnail preview - repeating pattern */}
+                    {(() => {
+                      const thumbnailImg = thumbnailImages.get(clip.mediaId);
+                      if (!thumbnailImg) {
+                        // Fallback to text label if thumbnail not loaded yet
+                        return (
+                          <Text
+                            x={8}
+                            y={8}
+                            text={label}
+                            fontSize={12}
+                            fill="#374151"
+                            width={Math.max(0, width - 16)}
+                            wrap={'none'}
+                            ellipsis
+                          />
+                        );
+                      }
+                      
+                      // Calculate thumbnail dimensions to fit in the clip height
+                      const clipHeight = trackHeight - 10;
+                      const thumbnailAspectRatio = thumbnailImg.width / thumbnailImg.height;
+                      const thumbnailHeight = clipHeight - 4; // 2px padding top and bottom
+                      const thumbnailWidth = thumbnailHeight * thumbnailAspectRatio;
+                      
+                      // Render repeating thumbnails to fill the clip width
+                      const thumbnails = [];
+                      let currentX = 2; // Start with 2px padding
+                      let index = 0;
+                      
+                      while (currentX < width - 2 && index < 50) { // Max 50 thumbnails to prevent infinite loop
+                        const remainingWidth = width - currentX - 2;
+                        const displayWidth = Math.min(thumbnailWidth, remainingWidth);
+                        
+                        if (displayWidth > 0) {
+                          thumbnails.push(
+                            <KonvaImage
+                              key={`thumb-${index}`}
+                              x={currentX}
+                              y={2}
+                              width={displayWidth}
+                              height={thumbnailHeight}
+                              image={thumbnailImg}
+                              crop={displayWidth < thumbnailWidth ? {
+                                x: 0,
+                                y: 0,
+                                width: thumbnailImg.width * (displayWidth / thumbnailWidth),
+                                height: thumbnailImg.height
+                              } : undefined}
+                            />
+                          );
+                        }
+                        
+                        currentX += thumbnailWidth;
+                        index++;
+                      }
+                      
+                      return thumbnails;
+                    })()}
 
                     {/* LEFT Trim Handle - FIXED: Calculates delta from initial position (0) */}
                     <Rect
@@ -885,7 +965,11 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                 y={0}
                 draggable
                 dragBoundFunc={(pos) => {
-                  const clampedX = Math.max(0, Math.min(stageWidth, pos.x));
+                  // Handle is 16px wide, centered at x=-8, so account for this to prevent clipping
+                  // At x=0, left edge would be at -8 (clipped), so minimum is x=8
+                  // At x=stageWidth, right edge would be at stageWidth+8 (clipped), so maximum is stageWidth-8
+                  const handleHalfWidth = 8;
+                  const clampedX = Math.max(handleHalfWidth, Math.min(stageWidth - handleHalfWidth, pos.x));
                   return { x: clampedX, y: 0 };
                 }}
                 onDragMove={(e) => {
@@ -898,19 +982,19 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
                 {/* Vertical line */}
                 <Line
                   points={[0, 0, 0, TIMELINE_HEIGHT]}
-                  stroke="#ef4444" // red-500
+                  stroke="#000000" // black
                   strokeWidth={2}
                   hitStrokeWidth={14}
                 />
-                {/* Handle near the top for better hit target */}
+                {/* Handle at the very top for better hit target */}
                 <Rect
                   x={-8}
-                  y={4}
+                  y={0}
                   width={16}
                   height={16}
-                  fill="#ef4444"
+                  fill="#000000"
                   cornerRadius={4}
-                  shadowColor={'#ef4444'}
+                  shadowColor={'#000000'}
                   shadowBlur={4}
                   shadowOpacity={0.4}
                 />
@@ -927,5 +1011,6 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
 };
 
 export default Timeline;
+
 
 
