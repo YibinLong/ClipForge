@@ -68,6 +68,8 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
   // Load thumbnail images for all media clips
   // **EXPLANATION**: This effect loads thumbnail images into memory so we can display them in timeline clips.
   // We use file:// protocol (same as in MediaLibrary) to access local thumbnail files.
+  // The effect only depends on mediaClips - when new media is added, we load its thumbnail.
+  // We removed thumbnailImages from dependencies to prevent infinite loop (since we update it inside the effect).
   useEffect(() => {
     mediaClips.forEach((media) => {
       if (!media.thumbnail) return;
@@ -86,7 +88,7 @@ const Timeline: React.FC<TimelineProps> = ({ durationSec = 120 }) => {
       };
       img.src = `file://${media.thumbnail}`;
     });
-  }, [mediaClips, thumbnailImages]);
+  }, [mediaClips]);
 
   const pixelsPerSecond = BASE_PX_PER_SEC * zoomLevel;
   // Force static 2-minute timeline regardless of first clip (per request)
